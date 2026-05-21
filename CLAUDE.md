@@ -35,6 +35,24 @@ Non caricare l'intero documento: leggi solo le sezioni richieste.
 - Feature rimandate marcate con // PARKING_LOT_*
 - Transizione fine_combattimento gestita dentro il motore, non dalla UI.
 
+## Versionamento git
+
+Il progetto è sotto controllo versione git. Alla fine di ogni sessione
+che abbia portato a uno stato funzionante:
+
+1. Esegui `git status` e mostrami cosa è cambiato.
+2. Proponimi un messaggio di commit descrittivo in italiano, che
+   indichi il punto di roadmap completato o la natura della modifica.
+3. Attendi mia conferma del messaggio prima di committare.
+4. Esegui `git add .` e `git commit -m "..."` con il messaggio approvato.
+
+NON fare mai `git reset --hard`, `git push --force`, o altre operazioni
+distruttive senza istruzione esplicita da parte mia.
+
+Prima di iniziare un refactor o un cambiamento strutturale grosso,
+suggerisci di fare prima un commit dello stato corrente come punto
+di ritorno.
+
 ## Lingua
 Rispondi sempre in italiano, sia nei messaggi in chat sia nei commenti
 del codice. Mantieni in inglese solo gli identificatori tecnici
