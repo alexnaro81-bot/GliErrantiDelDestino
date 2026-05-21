@@ -10,16 +10,29 @@
 //     stato, e poi ridisegnamo la UI da quello stato.
 //   - Non c'e' "magia": ogni elemento HTML viene aggiornato leggendo i campi
 //     dello stato di gioco.
+//
+// v0.6 (§5.2bis, §5.11, §8):
+//   - Pulsante "Attacco base" con indicatore gratuito/costo (§5.2bis).
+//   - Indicatore essenze accumulate e sinergie σ2 attive per ogni PG (§5.11).
+//   - Modale scelta forma_finale al Lv3 (§5.11).
+//   - Etichetta slot "talismano" al posto di "accessorio" (§2.2).
+//   - setup_partita_browser aggiornato alla struttura PGState v0.6.
 // =============================================================================
 
 (function() {
   'use strict';
 
-  // Stato globale dell'app. Inizializzato da setup_partita.
+  // Stato globale dell'app. Inizializzato da avvia_partita.
   let stato_gioco = null;
   let db = null;
   let scelta_giocatori = 2;
   let carta_selezionata = null;  // {id, carta_def} durante la selezione bersaglio
+
+  // §5.11: tag delle 10 categorie di essenze (spec §2.2 v0.6).
+  const ESSENZA_TAG = [
+    'fuoco', 'acqua', 'terra', 'aria', 'oscurita', 'luce',
+    'taglio', 'impatto', 'perforante', 'energia'
+  ];
 
   // Shortcuts ai moduli GED esposti dal bundle.
   const G = window.GED;
@@ -46,6 +59,9 @@
     document.getElementById('btn-ricomincia').addEventListener('click', () => location.reload());
     document.getElementById('btn-scelta-A').addEventListener('click', () => azione_scelta_evento('A'));
     document.getElementById('btn-scelta-B').addEventListener('click', () => azione_scelta_evento('B'));
+
+    // §5.2bis: pulsante attacco base.
+    document.getElementById('btn-attacco-base').addEventListener('click', azione_attacco_base);
   }
 
   // ---------------------------------------------------------------------------
@@ -82,6 +98,8 @@
 
   // Versione browser di setup_partita: usa il db gia' caricato invece di
   // ricaricarlo. Replica i passi di §3.1 chiamando le funzioni esposte.
+  // v0.6: struttura PGState aggiornata (§2.2): slot talismano, essenze,
+  // sinergie_attive, attacco_base_gratuito_consumato_questo_turno, ecc.
   function setup_partita_browser(numero_giocatori, seed, db) {
     let rng_state = seed | 0;
 
@@ -94,7 +112,7 @@
     const r_mappa = G.costruisci_mappa(mondo, db, rng_state);
     rng_state = r_mappa.rng_state;
 
-    // §3.1 punto 5: PG.
+    // §3.1 punto 5: PG con struttura v0.6 (§2.2).
     const classi = ['guerriero', 'mago', 'ladro', 'guaritore'];
     const giocatori = [];
     for (let i = 0; i < numero_giocatori; i++) {
@@ -104,6 +122,11 @@
       const r_mix = G.mescola(r_pila.pila, rng_state);
       rng_state = r_mix.rng_state;
       const dim_mano = db.config.pg.dimensione_mano;
+
+      // §2.2 v0.6: 10 categorie di essenze inizializzate a zero.
+      const essenze = {};
+      for (const tag of ESSENZA_TAG) essenze[tag] = 0;
+
       giocatori.push({
         id: `pg_${i + 1}`,
         nome: `Errante ${i + 1}`,
@@ -116,13 +139,28 @@
         scarti: [],
         campo: [],
         status: [],
-        equipaggiamento: { arma: null, armatura: null, accessorio: null },
+        // §2.2 v0.6: slot "talismano" al posto di "accessorio".
+        equipaggiamento: { arma: null, armatura: null, talismano: null },
+        // §5.11 v0.6: istanze per-PG dell'equipaggiamento (livello, forma).
+        equip_istanze: { arma: null, armatura: null, talismano: null },
+        // §5.11 v0.6: null se nessuna scelta di forma finale pendente.
+        scelta_forma_pendente: null,
         ko: false,
+        // §5.11 v0.6: pool essenze per l'evoluzione dell'equipaggiamento.
+        essenze,
+        // §5.2bis v0.6: flag reset a inizio turno da inizio_turno_pg.
+        attacco_base_gratuito_consumato_questo_turno: false,
+        // §5.6.4 v0.6: sinergie σ2 attive (calcolate da valuta_sinergie_passive).
+        sinergie_attive: [],
+        // §5.6.2 v0.6: contatore carte per tag (reset a {} a inizio turno).
+        carte_giocate_per_tag_turno: {},
+        // §5.6.3 v0.6: bonus prossima carta (consumato da pipeline_danno step 2).
+        bonus_prossima_carta_tag: null,
       });
     }
 
     return {
-      meta: { run_id: `run_${seed}`, seed, versione_regole: '0.3',
+      meta: { run_id: `run_${seed}`, seed, versione_regole: '0.6',
               timestamp_inizio: new Date().toISOString() },
       config: db.config,
       mondo,
@@ -134,6 +172,8 @@
       fase_corrente: 'esplorazione',
       turno_di: 0,
       round_numero: 1,
+      // §5.11 v0.6: fase salvata prima di ATTESA_SCELTA_FORMA_FINALE (per ripristino).
+      fase_prima_di_scelta_forma: null,
       log: [{
         id: 0,
         timestamp: new Date().toISOString(),
@@ -163,6 +203,10 @@
     render_mano();
     render_log();
     render_azioni();
+    // §5.11: controlla se e' il momento di mostrare la scelta forma finale.
+    if (stato_gioco.fase_corrente === 'attesa_scelta_forma_finale') {
+      apri_modale_forma_finale();
+    }
     verifica_fine_partita();
   }
 
@@ -176,6 +220,8 @@
     document.getElementById('ui-mondo').textContent = stato_gioco.mondo.nome;
   }
 
+  // render_pg: mostra PV, EN, mano, equipaggiamento (§2.2 v0.6: talismano),
+  // essenze non-zero (§5.11) e sinergie σ2 attive (§5.6.4).
   function render_pg() {
     const cont = document.getElementById('lista-pg');
     cont.innerHTML = '';
@@ -188,6 +234,16 @@
       const status_html = pg.status.map(s =>
         `<span class="status-pill">${s.tipo} ${s.intensita > 1 ? `×${s.intensita}` : ''}</span>`
       ).join('');
+
+      // §2.2 v0.6: slot equipaggiamento con "talismano" al posto di "accessorio".
+      const equip_html = _render_equipaggiamento(pg);
+
+      // §5.11 v0.6: essenze non-zero.
+      const essenze_html = _render_essenze(pg);
+
+      // §5.6.4 v0.6: sinergie σ2 attive.
+      const sinergie_html = _render_sinergie(pg);
+
       card.innerHTML = `
         <div class="nome-classe">
           <span class="nome">${pg.nome}</span>
@@ -201,9 +257,53 @@
           <span class="stat">Pila <strong>${pg.pila.length}</strong></span>
         </div>
         ${status_html ? `<div class="status-list">${status_html}</div>` : ''}
+        ${equip_html}
+        ${essenze_html}
+        ${sinergie_html}
       `;
       cont.appendChild(card);
     });
+  }
+
+  // §2.2 v0.6: genera l'HTML per i 3 slot equipaggiamento del PG.
+  // Mostra arma, armatura e talismano (con livello se istanza presente).
+  function _render_equipaggiamento(pg) {
+    const slots = [
+      { chiave: 'arma', etichetta: 'Arma' },
+      { chiave: 'armatura', etichetta: 'Armor' },
+      { chiave: 'talismano', etichetta: 'Talis.' },
+    ];
+    const righe = slots.map(({ chiave, etichetta }) => {
+      const id_equip = pg.equipaggiamento[chiave];
+      if (!id_equip) return `<div class="equip-slot"><span class="slot-nome">${etichetta}</span><span class="slot-valore" style="color:var(--testo-debole)">—</span></div>`;
+      const def = db && db.equipaggiamenti ? db.equipaggiamenti.find(e => e.id === id_equip) : null;
+      const nome = def ? def.nome : id_equip;
+      const istanza = pg.equip_istanze && pg.equip_istanze[chiave];
+      const livello = istanza ? istanza.livello : 1;
+      const lv_html = `<span class="slot-livello">Lv${livello}</span>`;
+      return `<div class="equip-slot"><span class="slot-nome">${etichetta}</span><span class="slot-valore">${nome}</span>${lv_html}</div>`;
+    });
+    return `<div class="equip-pg">${righe.join('')}</div>`;
+  }
+
+  // §5.11 v0.6: genera l'HTML per le essenze non-zero del PG.
+  function _render_essenze(pg) {
+    if (!pg.essenze) return '';
+    const pills = Object.entries(pg.essenze)
+      .filter(([, v]) => v > 0)
+      .map(([tag, v]) => `<span class="essenza-pill" data-tag="${tag}">${tag} ×${v}</span>`)
+      .join('');
+    if (!pills) return '';
+    return `<div class="essenze-pg">${pills}</div>`;
+  }
+
+  // §5.6.4 v0.6: genera l'HTML per le sinergie σ2 attive del PG.
+  function _render_sinergie(pg) {
+    if (!pg.sinergie_attive || pg.sinergie_attive.length === 0) return '';
+    const pills = pg.sinergie_attive.map(id =>
+      `<span class="sinergia-pill">σ2 ${id}</span>`
+    ).join('');
+    return `<div class="sinergie-pg">${pills}</div>`;
   }
 
   function render_nemici() {
@@ -294,7 +394,9 @@
       const el = document.createElement('div');
       el.className = 'log-evento';
       el.dataset.tipo = e.tipo;
-      if (['twist_rivelato', 'png_apparso', 'scelta_evento', 'ko'].includes(e.tipo)) {
+      if (['twist_rivelato', 'png_apparso', 'scelta_evento', 'ko',
+           'sinergia_attivata', 'equip_evoluto', 'forma_finale_disponibile',
+           'forma_finale_scelta'].includes(e.tipo)) {
         el.classList.add('evidenziato');
       }
       el.textContent = e.testo_narrativo;
@@ -304,18 +406,32 @@
     cont.scrollTop = cont.scrollHeight;
   }
 
+  // render_azioni: gestisce la visibilita' e lo stato dei bottoni azione.
+  // v0.6: aggiunge logica per il pulsante attacco base (§5.2bis).
   function render_azioni() {
-    const passa_btn = document.getElementById('btn-passa-turno');
-    const nodo_btn = document.getElementById('btn-prossimo-nodo');
-    const ris_btn = document.getElementById('btn-risolvi-nodo');
-    const combat_btn = document.getElementById('btn-avvia-combat');
-    const msg = document.getElementById('messaggio-azione');
+    const passa_btn   = document.getElementById('btn-passa-turno');
+    const nodo_btn    = document.getElementById('btn-prossimo-nodo');
+    const ris_btn     = document.getElementById('btn-risolvi-nodo');
+    const combat_btn  = document.getElementById('btn-avvia-combat');
+    const atk_row     = document.getElementById('riga-attacco-base');
+    const atk_btn     = document.getElementById('btn-attacco-base');
+    const atk_label   = document.getElementById('label-attacco-base');
+    const atk_costo   = document.getElementById('costo-attacco-base');
+    const msg         = document.getElementById('messaggio-azione');
 
     passa_btn.disabled = stato_gioco.fase_corrente !== 'attesa_azione_pg';
-    nodo_btn.disabled = true;
-    ris_btn.disabled = true;
+    nodo_btn.disabled  = true;
+    ris_btn.disabled   = true;
     combat_btn.disabled = true;
-    msg.textContent = '';
+    msg.textContent    = '';
+
+    // §5.2bis: mostra il pulsante attacco base solo durante il turno PG.
+    const turno_pg = stato_gioco.fase_corrente === 'attesa_azione_pg';
+    atk_row.classList.toggle('nascosto', !turno_pg);
+
+    if (turno_pg) {
+      _aggiorna_bottone_attacco_base(atk_btn, atk_label, atk_costo);
+    }
 
     const nodo = stato_gioco.mappa.nodi[stato_gioco.mappa.nodo_corrente];
 
@@ -338,9 +454,51 @@
         ris_btn.disabled = false;
         msg.textContent = `Risolvi nodo di tipo "${nodo.tipo_nodo}".`;
       }
-    } else if (stato_gioco.fase_corrente === 'attesa_azione_pg') {
-      msg.textContent = 'Gioca una carta o passa il turno.';
+    } else if (turno_pg) {
+      msg.textContent = 'Attacca o gioca una carta. Poi passa il turno.';
     }
+  }
+
+  // §5.2bis: aggiorna label e stato del bottone attacco base.
+  // Mostra "gratuito" se il turno gratuito non e' ancora stato usato,
+  // altrimenti mostra il costo in EN ricavato dall'arma equipaggiata.
+  function _aggiorna_bottone_attacco_base(btn, label, costo_el) {
+    const pg = stato_gioco.giocatori[stato_gioco.turno_di];
+    const ha_nemici = stato_gioco.nemici_in_campo.length > 0;
+
+    label.textContent = 'Attacco base';
+    costo_el.className = 'costo-attacco';
+
+    if (!ha_nemici) {
+      btn.disabled = true;
+      costo_el.textContent = 'nessun nemico';
+      return;
+    }
+
+    const gia_consumato = pg.attacco_base_gratuito_consumato_questo_turno === true;
+    if (!gia_consumato) {
+      // §5.2bis: primo attacco base del turno — gratuito.
+      costo_el.textContent = 'gratuito';
+      costo_el.classList.add('gratuito');
+      btn.disabled = false;
+    } else {
+      // §5.2bis: attacchi extra costano arma.stats_per_livello[lv-1].costo_extra EN.
+      const costo_extra = _leggi_costo_extra_arma(pg);
+      costo_el.textContent = `${costo_extra} EN`;
+      btn.disabled = costo_extra > pg.energia;
+    }
+  }
+
+  // Legge costo_extra dall'arma del PG corrente. Ritorna 0 se arma non equipaggiata.
+  function _leggi_costo_extra_arma(pg) {
+    const arma_id = pg.equipaggiamento && pg.equipaggiamento.arma;
+    if (!arma_id || !db || !db.equipaggiamenti) return 0;
+    const def = db.equipaggiamenti.find(e => e.id === arma_id);
+    if (!def || !Array.isArray(def.stats_per_livello)) return 0;
+    const istanza = pg.equip_istanze && pg.equip_istanze.arma;
+    const lv = istanza ? (istanza.livello || 1) : 1;
+    const stats = def.stats_per_livello[lv - 1];
+    return (stats && stats.costo_extra) ? stats.costo_extra : 0;
   }
 
   function verifica_fine_partita() {
@@ -376,6 +534,7 @@
     // Da v0.4: dopo l'ultimo nemico ucciso, il motore transita direttamente
     // a "esplorazione". La fase "fine_combattimento" non e' piu' osservabile
     // dall'UI ma resta nel check per backward compatibility (precaution).
+    // v0.6: includo attesa_scelta_forma_finale (fase bloccante §5.11).
     const f = stato_gioco.fase_corrente;
     return f && f !== 'esplorazione' && f !== 'fine_run' && f !== 'fine_combattimento';
   }
@@ -445,7 +604,7 @@
   }
 
   function azione_passa_turno() {
-    // 16.8: la signature di passa_turno e' diventata (state, db). Serve per
+    // §16.8: la signature di passa_turno e' diventata (state, db). Serve per
     // propagare db lungo la catena fine_turno_pg -> turno_nemici ->
     // pipeline_danno (era preso da una globale di modulo in v0.5).
     const r = G.passa_turno(stato_gioco, db);
@@ -496,6 +655,95 @@
 
   function azione_avvia_combat() {
     applica_nuovo_stato(G.avvia_combattimento(stato_gioco, db));
+  }
+
+  // §5.2bis: esegui attacco base del PG corrente.
+  // Richiede selezione bersaglio se ci sono piu' nemici in campo.
+  function azione_attacco_base() {
+    if (stato_gioco.nemici_in_campo.length === 0) return;
+    if (stato_gioco.nemici_in_campo.length === 1) {
+      esegui_attacco_base_su(stato_gioco.nemici_in_campo[0].istanza_id);
+      return;
+    }
+    apri_modale_target_attacco_base();
+  }
+
+  // Esegue effettivamente l'attacco base sul target scelto.
+  function esegui_attacco_base_su(target_id) {
+    const pg = stato_gioco.giocatori[stato_gioco.turno_di];
+    const r = G.esegui_attacco_base(stato_gioco, pg.id, target_id, db);
+    if (!r.ok) {
+      alert(`Attacco base fallito: ${r.errore.messaggio}`);
+      return;
+    }
+    applica_nuovo_stato(r.state);
+  }
+
+  // Riusa il modale target per l'attacco base (stessa UI, diversa azione).
+  function apri_modale_target_attacco_base() {
+    document.getElementById('modale-target-carta').textContent =
+      'Esegui attacco base su quale nemico?';
+    const cont = document.getElementById('lista-target');
+    cont.innerHTML = '';
+    stato_gioco.nemici_in_campo.forEach(nem => {
+      const carta = db.nemici.find(n => n.id === nem.carta_id);
+      const el = document.createElement('button');
+      el.className = 'target-opzione';
+      el.innerHTML = `<span>${carta ? carta.nome : nem.carta_id}</span><span>PV ${nem.pv}/${nem.pv_max}</span>`;
+      el.addEventListener('click', () => {
+        chiudi_modale_target();
+        esegui_attacco_base_su(nem.istanza_id);
+      });
+      cont.appendChild(el);
+    });
+    document.getElementById('modale-target').classList.add('aperto');
+  }
+
+  // §5.11: apri il modale di scelta forma finale.
+  // Legge pg.scelta_forma_pendente per determinare quale PG e' in attesa
+  // e quali opzioni presentare.
+  function apri_modale_forma_finale() {
+    // Cerca il PG con scelta_forma_pendente non null.
+    const pg = stato_gioco.giocatori.find(p => p.scelta_forma_pendente);
+    if (!pg) return;
+
+    const pendente = pg.scelta_forma_pendente;
+    document.getElementById('modale-forma-titolo').textContent =
+      `${pg.nome}: scegli la forma finale di ${pendente.equip_nome}`;
+    document.getElementById('modale-forma-sottotitolo').textContent =
+      `L'equipaggiamento ha raggiunto il Livello 3. Scegli il cammino evolutivo.`;
+
+    const cont = document.getElementById('lista-forme-finali');
+    cont.innerHTML = '';
+    pendente.opzioni.forEach(opzione => {
+      const btn = document.createElement('button');
+      btn.className = 'bottone-forma';
+      const tag_html = (opzione.tag_aggiuntivi || []).map(t =>
+        `<span class="tag-pill">${t}</span>`
+      ).join('');
+      btn.innerHTML = `
+        <span class="forma-nome">${opzione.nome}</span>
+        <span class="forma-desc">${opzione.descrizione_narrativa || ''}</span>
+        ${tag_html ? `<span class="forma-tag">${tag_html}</span>` : ''}
+      `;
+      btn.addEventListener('click', () => {
+        azione_conferma_forma_finale(pg.id, pendente.slot, opzione.forma_id);
+      });
+      cont.appendChild(btn);
+    });
+
+    document.getElementById('modale-forma-finale').classList.add('aperto');
+  }
+
+  // §5.11: conferma la scelta della forma finale e aggiorna lo stato.
+  function azione_conferma_forma_finale(pg_id, slot, forma_id) {
+    document.getElementById('modale-forma-finale').classList.remove('aperto');
+    const r = G.conferma_forma_finale(stato_gioco, pg_id, slot, forma_id, db);
+    if (!r.ok) {
+      alert(`Scelta forma finale fallita: ${r.errore.messaggio}`);
+      return;
+    }
+    applica_nuovo_stato(r.state);
   }
 
   // Avvio.

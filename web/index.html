@@ -84,6 +84,13 @@
       <div id="area-mano">
         <h2 id="titolo-mano">Mano</h2>
         <div id="lista-mano" class="vuoto">—</div>
+        <!-- §5.2bis: pulsante attacco base sempre visibile durante il turno PG. -->
+        <div id="riga-attacco-base" class="nascosto">
+          <button id="btn-attacco-base" class="bottone-attacco-base">
+            <span id="label-attacco-base">Attacco base</span>
+            <span id="costo-attacco-base" class="costo-attacco"></span>
+          </button>
+        </div>
         <div id="riga-azioni">
           <button id="btn-passa-turno" class="bottone-azione" disabled>Passa il turno</button>
           <button id="btn-prossimo-nodo" class="bottone-azione" disabled>Prossimo nodo</button>
@@ -137,6 +144,15 @@
     <h2 id="modale-fine-titolo">—</h2>
     <p id="modale-fine-testo"></p>
     <button id="btn-ricomincia" class="bottone-principale">Nuova partita</button>
+  </div>
+</div>
+
+<!-- §5.11: modale scelta forma finale al Lv3 dell'equipaggiamento. -->
+<div id="modale-forma-finale" class="modale">
+  <div class="modale-contenuto">
+    <h2 id="modale-forma-titolo">—</h2>
+    <p id="modale-forma-sottotitolo" class="forma-sottotitolo"></p>
+    <div id="lista-forme-finali" class="scelte-evento"></div>
   </div>
 </div>
 
