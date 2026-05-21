@@ -1,0 +1,22 @@
+# Dipendenze npm — si rigenerano con npm install
+node_modules/
+
+# Bundle generato — si rigenera con build_browser.js
+motore_bundle.js
+
+# File di sistema operativo
+.DS_Store
+Thumbs.db
+
+# File temporanei e di backup
+*.tmp
+*.bak
+*.swp
+*~
+
+# Eventuali log
+*.log
+
+# Cartelle di editor
+.vscode/
+.idea/

@@ -1,0 +1,3 @@
+id,nome,classe_preferita,costo_energia,descrizione_narrativa,effetto,target,tag,tag_sinergia
+CNS_SACCA_POZIONI,Sacca di Pozioni del Cercatore,guaritore,0,"Una sacca consunta che contiene tre fiale di un liquido ambrato. Il vetro sa di erbe e di pietra calda. Si dice che chi le beve si rimetta in piedi anche dalla peggiore caduta.","{""op"":""cura_pv"",""bersaglio"":""tutti_pg_non_ko"",""valore"":6}",tutti_pg,cura|ristoro,cura
+CNS_RAZIONE_VIAGGIO,Razione di Viaggio,universale,0,"Pane scuro, formaggio stagionato, una piccola fiaschetta di vino aspro. Niente di magico. Solo cibo onesto che ricorda al corpo perché vale la pena continuare.","{""op"":""cura_pv"",""bersaglio"":""se"",""valore"":4}",se,cura|base,base|cura

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gli Erranti del Destino</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Schermata di setup: scelta giocatori e seed. -->
+<div id="schermata-setup" class="schermata attiva">
+  <div class="setup-box">
+    <h1>Gli Erranti del Destino</h1>
+    <p class="sottotitolo">Un'avventura fantasy a carte</p>
+
+    <div class="campo">
+      <label>Numero di giocatori</label>
+      <div class="bottoni-numero" id="scelta-giocatori">
+        <button data-n="2" class="attivo">2</button>
+        <button data-n="3">3</button>
+        <button data-n="4">4</button>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label>Seed (opzionale, per partite riproducibili)</label>
+      <input type="number" id="input-seed" placeholder="lascia vuoto per casuale">
+    </div>
+
+    <button id="btn-inizia" class="bottone-principale">Inizia la partita</button>
+    <p id="setup-errore" class="errore"></p>
+  </div>
+</div>
+
+<!-- Schermata principale di gioco. -->
+<div id="schermata-gioco" class="schermata">
+
+  <!-- Header: fase, round, nodo corrente. -->
+  <header id="header-gioco">
+    <div class="header-info">
+      <span class="etichetta">Nodo</span>
+      <span id="ui-nodo-corrente">—</span>
+    </div>
+    <div class="header-info">
+      <span class="etichetta">Tipo</span>
+      <span id="ui-tipo-nodo">—</span>
+    </div>
+    <div class="header-info">
+      <span class="etichetta">Round</span>
+      <span id="ui-round">—</span>
+    </div>
+    <div class="header-info">
+      <span class="etichetta">Fase</span>
+      <span id="ui-fase">—</span>
+    </div>
+    <div class="header-info crescita">
+      <span class="etichetta">Mondo</span>
+      <span id="ui-mondo">—</span>
+    </div>
+  </header>
+
+  <!-- Layout principale a 3 colonne. -->
+  <main id="layout-gioco">
+
+    <!-- Colonna sinistra: PG. -->
+    <section id="colonna-pg" class="colonna">
+      <h2>Erranti</h2>
+      <div id="lista-pg"></div>
+    </section>
+
+    <!-- Colonna centrale: nemici, mappa, mano del PG attivo. -->
+    <section id="colonna-centro" class="colonna">
+      <div id="area-nemici">
+        <h2>Nemici</h2>
+        <div id="lista-nemici" class="vuoto">Nessun nemico in campo</div>
+      </div>
+
+      <div id="area-mappa">
+        <h2>Mappa</h2>
+        <div id="lista-nodi"></div>
+      </div>
+
+      <div id="area-mano">
+        <h2 id="titolo-mano">Mano</h2>
+        <div id="lista-mano" class="vuoto">—</div>
+        <div id="riga-azioni">
+          <button id="btn-passa-turno" class="bottone-azione" disabled>Passa il turno</button>
+          <button id="btn-prossimo-nodo" class="bottone-azione" disabled>Prossimo nodo</button>
+          <button id="btn-risolvi-nodo" class="bottone-azione" disabled>Risolvi nodo</button>
+          <button id="btn-avvia-combat" class="bottone-azione" disabled>Avvia combattimento</button>
+        </div>
+        <p id="messaggio-azione" class="aiuto"></p>
+      </div>
+    </section>
+
+    <!-- Colonna destra: log. -->
+    <section id="colonna-log" class="colonna">
+      <h2>Cronaca</h2>
+      <div id="lista-log"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modale evento: testo + scelta A/B. -->
+<div id="modale-evento" class="modale">
+  <div class="modale-contenuto">
+    <h2 id="modale-evento-nome">—</h2>
+    <p id="modale-evento-testo"></p>
+    <div class="scelte-evento">
+      <button id="btn-scelta-A" class="bottone-scelta">
+        <span class="etichetta-scelta">Scelta A</span>
+        <span id="testo-scelta-A"></span>
+      </button>
+      <button id="btn-scelta-B" class="bottone-scelta">
+        <span class="etichetta-scelta">Scelta B</span>
+        <span id="testo-scelta-B"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale selezione bersaglio: appare quando una carta richiede target. -->
+<div id="modale-target" class="modale">
+  <div class="modale-contenuto">
+    <h2>Scegli un bersaglio</h2>
+    <p id="modale-target-carta"></p>
+    <div id="lista-target"></div>
+    <button id="btn-annulla-target" class="bottone-secondario">Annulla</button>
+  </div>
+</div>
+
+<!-- Modale fine partita. -->
+<div id="modale-fine" class="modale">
+  <div class="modale-contenuto">
+    <h2 id="modale-fine-titolo">—</h2>
+    <p id="modale-fine-testo"></p>
+    <button id="btn-ricomincia" class="bottone-principale">Nuova partita</button>
+  </div>
+</div>
+
+<script src="motore_bundle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

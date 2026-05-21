@@ -1,0 +1,2 @@
+id,nome,elemento,descrizione_narrativa,regola_mondo,tag_luoghi,tag_eventi
+MONDO_FOR,Foresta Sussurrante,terra,"Una distesa di alberi millenari che sembrano osservare ogni passo. Il vento porta voci che non appartengono al vento. Si dice che chi ascolta troppo a lungo perda la strada per sempre.","I PG curano 1 PV alla fine di ogni round di combattimento",LUO_FOR_01|LUO_FOR_02|LUO_FOR_03|LUO_FOR_04|LUO_FOR_05|LUO_FOR_06,EVT_FOR_01|EVT_FOR_02

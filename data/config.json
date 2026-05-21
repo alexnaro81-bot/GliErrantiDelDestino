@@ -1,0 +1,50 @@
+{
+  "_commento": "Parametri globali del gioco. Vedi §0.3 del regolamento v0.6.",
+  "_versione_regolamento": "0.6",
+
+  "giocatori": {
+    "min": 2,
+    "max": 4
+  },
+
+  "pg": {
+    "pv_iniziali": 30,
+    "pv_massimi": 30,
+    "energia_per_turno": 3,
+    "dimensione_mano": 5,
+    "dimensione_pila_iniziale": 15
+  },
+
+  "run": {
+    "nodi_totali": 12,
+    "nodi_prima_di_boss": 11,
+    "twist_min_nodi": 3
+  },
+
+  "mappa": {
+    "scelte_per_nodo": 2,
+    "ramificazione": "lineare_con_bivi"
+  },
+
+  "_commento_combattimento": "Sezione v0.6 (§0.3): parametri della Fase Combattimento. attacco_base_gratuito_per_turno: §5.2bis quanti attacchi base gratuiti per turno. moltiplicatore_vulnerabilita / moltiplicatore_resistenza: §5.7 step 4, applicati quando un tag della fonte di danno matcha la vuln/res del target (somma di vuln/res nemico + mondo + luogo). essenze_per_lv2 / essenze_per_lv3: §5.11, costo in essenze per salire di livello un equipaggiamento.",
+  "combattimento": {
+    "attacco_base_gratuito_per_turno": 1,
+    "moltiplicatore_vulnerabilita": 1.5,
+    "moltiplicatore_resistenza": 0.5,
+    "essenze_per_lv2": 3,
+    "essenze_per_lv3": 5
+  },
+
+  "rng": {
+    "seed_default": null,
+    "_commento_seed": "Se null, il motore genera un seed casuale. Per test deterministici, passare un intero (es. 42)."
+  },
+
+  "_extension_points": {
+    "_commento": "Riservato per future estensioni (#EXT del regolamento). Non rimuovere.",
+    "EXT_GRAPH_MAP_enabled": false,
+    "EXT_DECKBUILD_enabled": false,
+    "EXT_MULTI_BOSS_enabled": false,
+    "EXT_SINERGIE_MULTI_PG_enabled": false
+  }
+}

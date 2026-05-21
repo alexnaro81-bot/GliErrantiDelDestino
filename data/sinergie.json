@@ -1,0 +1,150 @@
+{
+  "_commento": "Pool sinergie MVP del regolamento v0.6. Vedi §5.6 (sistema), §5.6.1 (schema), §5.6.2 (tassonomia condizioni), §5.6.3 (tassonomia effetti), §5.6.5 (pool target).",
+  "_versione_regolamento": "0.6",
+
+  "_schema_record": {
+    "id": "Identificatore univoco SIN_*. Usato dal motore per loggare 'sinergia_attivata' e per popolare pg.sinergie_attive (solo σ2).",
+    "nome": "Nome leggibile mostrato al giocatore.",
+    "tipo": "σ1 (multi-carta in turno) | σ2 (pattern di equipaggiamento). Vedi §5.6.",
+    "condizione": "Oggetto con campo 'tipo' tra: n_carte_tag_in_turno | equip_tag_match | classe_pg | status_attivo | pv_soglia. Vedi §5.6.2.",
+    "effetto": "Oggetto con campo 'tipo' tra: bonus_danno_prossima_carta_con_tag | bonus_danno_attacco_base | applica_status_a_se | draw_extra | riduzione_costo. Vedi §5.6.3.",
+    "descrizione_narrativa": "Testo evocativo mostrato al giocatore quando la sinergia scatta o resta attiva."
+  },
+
+  "_note_pool_v0_6": {
+    "obiettivo_mvp": "5-8 sinergie per validare il motore (sotto-step 16.5 e 16.6 della ROADMAP). Target ufficiale §5.6.5 = 15-20 sinergie a regime, da raggiungere via authoring incrementale.",
+    "composizione_attuale": "4 σ1 + 3 σ2 = 7 sinergie. Coprono i tag piu' densi nel pool carte attuale: taglio, sacro, impatto, gelo (σ1) e luce/sacro/fuoco (σ2).",
+    "sinergie_che_oggi_NON_scattano_mai": "SIN_ANIMA_BRACE (σ2 fuoco arma+talismano) richiede un talismano con tag fuoco che oggi non esiste nel pool. E' tenuta come esempio canonico (citata in §5.6.1) e per documentare il degrado elegante del motore: una σ2 mai soddisfatta semplicemente non entra mai in pg.sinergie_attive. Verra' attivata quando un futuro authoring CSV introdurra' un talismano fuoco.",
+    "parking_lot": "PARKING_LOT_SINERGIE_POOL_INIZIALE: ampliamento a 15-20 sinergie e bilanciamento dei valori e' authoring continuo, non engine."
+  },
+
+  "sinergie": {
+
+    "SIN_DANZA_LAME": {
+      "id": "SIN_DANZA_LAME",
+      "nome": "Danza delle Lame",
+      "tipo": "σ1",
+      "condizione": {
+        "tipo": "n_carte_tag_in_turno",
+        "tag": "taglio",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "bonus_danno_prossima_carta_con_tag",
+        "tag": "taglio",
+        "valore": 3,
+        "una_tantum_per_turno": true
+      },
+      "descrizione_narrativa": "Le lame danzano in armonia: la prossima volta che colpisci di taglio, il colpo trova naturalmente un'apertura."
+    },
+
+    "SIN_MARTELLO_RIPETUTO": {
+      "id": "SIN_MARTELLO_RIPETUTO",
+      "nome": "Martello Ripetuto",
+      "tipo": "σ1",
+      "condizione": {
+        "tipo": "n_carte_tag_in_turno",
+        "tag": "impatto",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "bonus_danno_prossima_carta_con_tag",
+        "tag": "impatto",
+        "valore": 2,
+        "una_tantum_per_turno": true
+      },
+      "descrizione_narrativa": "Un colpo prepara il successivo: la guardia del nemico si abbassa, e il prossimo impatto scava piu' a fondo."
+    },
+
+    "SIN_CORO_LUMINOSO": {
+      "id": "SIN_CORO_LUMINOSO",
+      "nome": "Coro Luminoso",
+      "tipo": "σ1",
+      "condizione": {
+        "tipo": "n_carte_tag_in_turno",
+        "tag": "sacro",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "bonus_danno_prossima_carta_con_tag",
+        "tag": "sacro",
+        "valore": 3,
+        "una_tantum_per_turno": true
+      },
+      "descrizione_narrativa": "La luce chiama altra luce: la prossima invocazione sacra brucia con piu' fervore di quella che l'ha preparata."
+    },
+
+    "SIN_GELO_PROFONDO": {
+      "id": "SIN_GELO_PROFONDO",
+      "nome": "Gelo Profondo",
+      "tipo": "σ1",
+      "condizione": {
+        "tipo": "n_carte_tag_in_turno",
+        "tag": "gelo",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "riduzione_costo",
+        "tag": "gelo",
+        "valore": 1,
+        "una_tantum_per_turno": true
+      },
+      "descrizione_narrativa": "Il freddo si stratifica e mantiene se stesso: la prossima carta di gelo costa meno energia perche' il mondo intorno collabora."
+    },
+
+    "SIN_ARMONIA_SOLARE": {
+      "id": "SIN_ARMONIA_SOLARE",
+      "nome": "Armonia Solare",
+      "tipo": "σ2",
+      "condizione": {
+        "tipo": "equip_tag_match",
+        "slot": ["arma", "talismano"],
+        "tag": "luce",
+        "soglia": 1
+      },
+      "effetto": {
+        "tipo": "bonus_danno_attacco_base",
+        "valore": 1,
+        "applica_tag": "luce"
+      },
+      "descrizione_narrativa": "Un singolo barlume di luce sull'equipaggiamento basta a colorare ogni colpo: l'attacco base brilla un poco, e quel poco entra nella carne."
+    },
+
+    "SIN_GIURAMENTO_SACRO": {
+      "id": "SIN_GIURAMENTO_SACRO",
+      "nome": "Giuramento Sacro",
+      "tipo": "σ2",
+      "condizione": {
+        "tipo": "equip_tag_match",
+        "slot": ["arma", "talismano"],
+        "tag": "sacro",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "bonus_danno_attacco_base",
+        "valore": 2,
+        "applica_tag": "sacro"
+      },
+      "descrizione_narrativa": "L'arma e il talismano hanno fatto patto: ogni colpo e' anche una preghiera, e le preghiere armate pesano il doppio."
+    },
+
+    "SIN_ANIMA_BRACE": {
+      "id": "SIN_ANIMA_BRACE",
+      "nome": "Anima di Brace",
+      "tipo": "σ2",
+      "condizione": {
+        "tipo": "equip_tag_match",
+        "slot": ["arma", "talismano"],
+        "tag": "fuoco",
+        "soglia": 2
+      },
+      "effetto": {
+        "tipo": "bonus_danno_attacco_base",
+        "valore": 1,
+        "applica_tag": "fuoco"
+      },
+      "descrizione_narrativa": "Le braci si sintonizzano con la tua arma: ogni colpo lascia una piccola scia di calore residuo."
+    }
+
+  }
+}

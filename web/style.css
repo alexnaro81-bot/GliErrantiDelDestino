@@ -1,0 +1,289 @@
+/* ==========================================================================
+   Gli Erranti del Destino — style.css
+   Tema dark fantasy semplice, prosa centrale, niente decorazioni inutili.
+   ========================================================================== */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Palette. */
+  --bg-pagina:    #1a1612;
+  --bg-pannello:  #2a231d;
+  --bg-elevato:   #3a3027;
+  --bg-input:     #251e18;
+  --bordo:        #4a3e32;
+  --bordo-attivo: #8b6f47;
+  --testo:        #e8dccd;
+  --testo-muto:   #a89882;
+  --testo-debole: #6b5d4a;
+  --oro:          #c9a35f;
+  --rosso:        #b85440;
+  --verde:        #6b8e4e;
+  --blu:          #4a7090;
+  --viola:        #8b5fb8;
+
+  /* Spaziature. */
+  --gap-s: 6px;
+  --gap-m: 12px;
+  --gap-l: 20px;
+
+  /* Bordi e raggi. */
+  --raggio: 6px;
+  --raggio-grande: 10px;
+}
+
+body {
+  background: var(--bg-pagina);
+  color: var(--testo);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+h1, h2, h3 { font-weight: normal; color: var(--oro); }
+h1 { font-size: 32px; letter-spacing: 0.5px; }
+h2 { font-size: 18px; margin-bottom: var(--gap-m); border-bottom: 1px solid var(--bordo); padding-bottom: 4px; }
+h3 { font-size: 15px; }
+
+/* --- Schermate generiche --- */
+.schermata { display: none; }
+.schermata.attiva { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* --- Schermata setup --- */
+#schermata-setup { align-items: center; justify-content: center; padding: 40px 20px; }
+.setup-box {
+  background: var(--bg-pannello);
+  padding: 40px;
+  border-radius: var(--raggio-grande);
+  border: 1px solid var(--bordo);
+  max-width: 480px;
+  width: 100%;
+}
+.setup-box h1 { text-align: center; margin-bottom: 6px; }
+.setup-box .sottotitolo { text-align: center; color: var(--testo-muto); margin-bottom: 30px; font-style: italic; }
+.campo { margin-bottom: 20px; }
+.campo label { display: block; color: var(--testo-muto); margin-bottom: 8px; font-size: 13px; }
+.bottoni-numero { display: flex; gap: var(--gap-s); }
+.bottoni-numero button {
+  flex: 1; padding: 10px;
+  background: var(--bg-input); color: var(--testo);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  cursor: pointer; font-family: inherit; font-size: 14px;
+}
+.bottoni-numero button:hover { border-color: var(--bordo-attivo); }
+.bottoni-numero button.attivo { background: var(--bordo-attivo); color: var(--bg-pagina); border-color: var(--oro); }
+input[type="number"], input[type="text"] {
+  width: 100%; padding: 10px;
+  background: var(--bg-input); color: var(--testo);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  font-family: inherit; font-size: 14px;
+}
+input[type="number"]:focus, input[type="text"]:focus { outline: none; border-color: var(--bordo-attivo); }
+.bottone-principale {
+  width: 100%; padding: 12px;
+  background: var(--oro); color: var(--bg-pagina);
+  border: none; border-radius: var(--raggio);
+  cursor: pointer; font-family: inherit; font-size: 15px; font-weight: bold;
+  margin-top: var(--gap-m);
+}
+.bottone-principale:hover { background: #d6b070; }
+.errore { color: var(--rosso); margin-top: var(--gap-m); min-height: 20px; }
+
+/* --- Schermata gioco: header --- */
+#header-gioco {
+  display: flex; gap: var(--gap-l);
+  padding: 10px 20px;
+  background: var(--bg-pannello);
+  border-bottom: 1px solid var(--bordo);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.header-info { display: flex; flex-direction: column; gap: 2px; }
+.header-info.crescita { flex: 1; }
+.etichetta { font-size: 11px; color: var(--testo-debole); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* --- Schermata gioco: layout 3 colonne --- */
+#layout-gioco {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: var(--gap-m);
+  padding: var(--gap-m);
+  flex: 1;
+}
+.colonna { background: var(--bg-pannello); border-radius: var(--raggio-grande); padding: var(--gap-m); overflow: hidden; }
+#colonna-log { display: flex; flex-direction: column; }
+
+/* --- Lista PG --- */
+.pg-card {
+  background: var(--bg-elevato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: var(--gap-m);
+  margin-bottom: var(--gap-m);
+}
+.pg-card.turno-attivo { border-color: var(--oro); box-shadow: 0 0 0 1px var(--oro); }
+.pg-card.ko { opacity: 0.5; }
+.pg-card .nome-classe { display: flex; justify-content: space-between; margin-bottom: var(--gap-s); }
+.pg-card .nome { font-weight: bold; color: var(--oro); }
+.pg-card .classe { font-size: 12px; color: var(--testo-muto); text-transform: capitalize; }
+.barra-pv { background: var(--bg-input); border-radius: 3px; height: 8px; overflow: hidden; margin: 4px 0 8px; }
+.barra-pv-riempita { background: var(--rosso); height: 100%; transition: width 0.3s; }
+.stats-pg { display: flex; gap: var(--gap-m); font-size: 12px; }
+.stat { color: var(--testo-muto); }
+.stat strong { color: var(--testo); }
+.status-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.status-pill {
+  font-size: 11px; padding: 2px 6px; border-radius: 10px;
+  background: var(--bg-input); color: var(--testo-muto);
+  border: 1px solid var(--bordo);
+}
+
+/* --- Lista nemici --- */
+#lista-nemici { display: flex; flex-direction: column; gap: var(--gap-s); }
+#lista-nemici.vuoto { color: var(--testo-debole); font-style: italic; padding: var(--gap-m); }
+.nemico-card {
+  background: var(--bg-elevato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: var(--gap-s) var(--gap-m);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.nemico-card.bersaglio { border-color: var(--oro); cursor: pointer; }
+.nemico-card.bersaglio:hover { background: var(--bordo); }
+.nemico-card .nome { color: var(--oro); }
+.nemico-card .pv { font-family: 'Courier New', monospace; }
+.nemico-card .categoria { font-size: 11px; color: var(--testo-muto); text-transform: uppercase; }
+
+/* --- Mappa --- */
+#lista-nodi { display: flex; gap: 4px; flex-wrap: wrap; }
+.nodo-mappa {
+  width: 30px; height: 30px;
+  background: var(--bg-input);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--testo-muto);
+  position: relative;
+}
+.nodo-mappa.visitato { background: var(--verde); color: var(--testo); }
+.nodo-mappa.corrente { background: var(--oro); color: var(--bg-pagina); font-weight: bold; }
+.nodo-mappa[data-tipo="combattimento"]::after { content: "⚔"; position: absolute; bottom: -12px; font-size: 10px; }
+.nodo-mappa[data-tipo="evento"]::after { content: "?"; position: absolute; bottom: -12px; font-size: 10px; }
+.nodo-mappa[data-tipo="riposo"]::after { content: "♨"; position: absolute; bottom: -12px; font-size: 10px; }
+.nodo-mappa[data-tipo="tesoro"]::after { content: "✦"; position: absolute; bottom: -12px; font-size: 10px; }
+.nodo-mappa[data-tipo="speciale"]::after { content: "★"; position: absolute; bottom: -12px; font-size: 10px; }
+
+#area-mappa { margin: var(--gap-l) 0; padding-bottom: var(--gap-l); border-bottom: 1px solid var(--bordo); }
+
+/* --- Mano --- */
+#lista-mano { display: flex; gap: var(--gap-s); flex-wrap: wrap; min-height: 90px; }
+#lista-mano.vuoto { color: var(--testo-debole); font-style: italic; align-items: center; }
+.carta {
+  width: 140px;
+  background: var(--bg-elevato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: var(--gap-s);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  font-size: 12px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.carta:hover:not(.disabilitata) { border-color: var(--oro); transform: translateY(-3px); }
+.carta.disabilitata { opacity: 0.5; cursor: not-allowed; }
+.carta .nome-carta { color: var(--oro); font-weight: bold; margin-bottom: 4px; }
+.carta .meta-carta { display: flex; justify-content: space-between; color: var(--testo-muto); font-size: 11px; }
+.carta .costo { background: var(--blu); color: var(--testo); padding: 0 5px; border-radius: 8px; font-weight: bold; }
+.carta .descrizione { color: var(--testo-muto); margin-top: 4px; font-size: 11px; flex: 1; }
+.carta[data-tipo="attacco"] { border-left: 3px solid var(--rosso); }
+.carta[data-tipo="abilita"] { border-left: 3px solid var(--blu); }
+.carta[data-tipo="oggetto"] { border-left: 3px solid var(--verde); }
+
+#riga-azioni { display: flex; gap: var(--gap-s); margin-top: var(--gap-m); }
+.bottone-azione {
+  padding: 8px 14px;
+  background: var(--bg-input); color: var(--testo);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  cursor: pointer; font-family: inherit; font-size: 13px;
+}
+.bottone-azione:hover:not(:disabled) { border-color: var(--bordo-attivo); }
+.bottone-azione:disabled { opacity: 0.4; cursor: not-allowed; }
+.aiuto { color: var(--testo-muto); font-size: 12px; margin-top: var(--gap-s); min-height: 18px; }
+
+/* --- Log --- */
+#lista-log {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(100vh - 200px);
+  padding-right: 4px;
+}
+.log-evento {
+  padding: 4px 6px;
+  border-left: 2px solid var(--bordo);
+  color: var(--testo-muto);
+}
+.log-evento.evidenziato { border-left-color: var(--oro); color: var(--testo); }
+.log-evento[data-tipo="ko"] { border-left-color: var(--rosso); }
+.log-evento[data-tipo="twist_rivelato"] { border-left-color: var(--viola); color: var(--testo); }
+.log-evento[data-tipo="png_apparso"] { border-left-color: var(--verde); color: var(--testo); }
+.log-evento[data-tipo="scelta_evento"] { border-left-color: var(--oro); color: var(--testo); }
+
+/* --- Modali --- */
+.modale {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modale.aperto { display: flex; }
+.modale-contenuto {
+  background: var(--bg-pannello);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-grande);
+  padding: 30px;
+  max-width: 600px;
+  width: 100%;
+}
+.modale-contenuto h2 { color: var(--oro); margin-bottom: var(--gap-m); border-bottom: none; }
+.modale-contenuto p { margin-bottom: var(--gap-l); color: var(--testo-muto); line-height: 1.6; }
+
+.scelte-evento { display: flex; gap: var(--gap-m); flex-direction: column; }
+.bottone-scelta {
+  text-align: left;
+  padding: var(--gap-m);
+  background: var(--bg-elevato);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  color: var(--testo); cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.bottone-scelta:hover { border-color: var(--oro); background: var(--bg-input); }
+.etichetta-scelta { color: var(--oro); font-weight: bold; font-size: 13px; }
+.bottone-secondario {
+  margin-top: var(--gap-m);
+  padding: 8px 16px;
+  background: transparent; color: var(--testo-muto);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  cursor: pointer; font-family: inherit;
+}
+.bottone-secondario:hover { color: var(--testo); border-color: var(--bordo-attivo); }
+
+#lista-target { display: flex; flex-direction: column; gap: var(--gap-s); margin-bottom: var(--gap-m); }
+.target-opzione {
+  padding: var(--gap-s) var(--gap-m);
+  background: var(--bg-elevato);
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  color: var(--testo); cursor: pointer; font-family: inherit;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.target-opzione:hover { border-color: var(--oro); }
+
+/* --- Mobile (semplice) --- */
+@media (max-width: 900px) {
+  #layout-gioco { grid-template-columns: 1fr; }
+  #colonna-log { max-height: 200px; }
+}

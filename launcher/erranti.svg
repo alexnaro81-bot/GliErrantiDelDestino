@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Sfondo circolare scuro -->
+  <circle cx="128" cy="128" r="128" fill="#1a1612"/>
+  <!-- Cornice oro sottile -->
+  <circle cx="128" cy="128" r="120" fill="none" stroke="#c9a35f" stroke-width="2"/>
+
+  <!-- Luna in alto a destra -->
+  <circle cx="190" cy="70" r="14" fill="#e8dccd" opacity="0.8"/>
+
+  <!-- Albero stilizzato: tronco -->
+  <path d="M 128 200 L 122 130 L 118 70 L 124 65 L 132 65 L 138 70 L 134 130 L 128 200 Z"
+        fill="#3a3027" stroke="#4a3e32" stroke-width="1"/>
+  <!-- Rami: linee semplici che si dipartono dal tronco -->
+  <line x1="124" y1="90" x2="90" y2="60" stroke="#3a3027" stroke-width="3" stroke-linecap="round"/>
+  <line x1="120" y1="105" x2="80" y2="100" stroke="#3a3027" stroke-width="3" stroke-linecap="round"/>
+  <line x1="132" y1="90" x2="170" y2="55" stroke="#3a3027" stroke-width="3" stroke-linecap="round"/>
+  <line x1="135" y1="110" x2="175" y2="115" stroke="#3a3027" stroke-width="3" stroke-linecap="round"/>
+  <line x1="125" y1="75" x2="110" y2="40" stroke="#3a3027" stroke-width="2" stroke-linecap="round"/>
+  <line x1="131" y1="75" x2="148" y2="42" stroke="#3a3027" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Errante: silhouette con cappa, in piedi accanto all'albero -->
+  <!-- Cappa esterna -->
+  <path d="M 148 165
+           L 148 158
+           Q 148 145, 158 142
+           Q 166 140, 170 152
+           L 172 200
+           L 145 200
+           Z"
+        fill="#2a231d" stroke="#c9a35f" stroke-width="1.5"/>
+  <!-- Cappuccio -->
+  <path d="M 155 145
+           Q 152 132, 162 130
+           Q 172 132, 168 145
+           L 168 155
+           L 155 155
+           Z"
+        fill="#1a1612" stroke="#c9a35f" stroke-width="1.5"/>
+  <!-- Bastone in mano -->
+  <line x1="142" y1="135" x2="138" y2="200" stroke="#8b6f47" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Piccola luce in cima al bastone -->
+  <circle cx="142" cy="135" r="3" fill="#c9a35f" opacity="0.9"/>
+
+  <!-- Terreno: linea curva sottile -->
+  <path d="M 30 200 Q 128 215 226 200" fill="none" stroke="#4a3e32" stroke-width="2"/>
+
+  <!-- Foglie sparse: triangolini colore foglia secca -->
+  <circle cx="60" cy="180" r="2" fill="#8b6f47"/>
+  <circle cx="200" cy="195" r="2" fill="#8b6f47"/>
+  <circle cx="100" cy="195" r="1.5" fill="#8b6f47"/>
+  <circle cx="180" cy="185" r="1.5" fill="#8b6f47"/>
+
+  <!-- Stelle in alto (puntini chiari) -->
+  <circle cx="50" cy="50" r="1.5" fill="#e8dccd" opacity="0.6"/>
+  <circle cx="80" cy="35" r="1" fill="#e8dccd" opacity="0.5"/>
+  <circle cx="220" cy="100" r="1" fill="#e8dccd" opacity="0.5"/>
+  <circle cx="35" cy="90" r="1" fill="#e8dccd" opacity="0.4"/>
+</svg>
