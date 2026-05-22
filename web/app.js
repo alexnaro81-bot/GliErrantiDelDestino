@@ -127,6 +127,18 @@
       const essenze = {};
       for (const tag of ESSENZA_TAG) essenze[tag] = 0;
 
+      // §C3-fix browser: equipaggiamento iniziale per classe (stessa logica di motore/setup.js).
+      // Priorità: slot+classe precisa → slot+universale → null.
+      const _pick_equip = (slot) =>
+        db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === classe)
+        || db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === 'universale')
+        || null;
+      const _istanza_equip = (equip) => equip
+        ? { livello: 1, forma_scelta_id: null, tag_correnti: [...equip.tag] }
+        : null;
+      const _ea = _pick_equip('arma');
+      const _et = _pick_equip('talismano');
+
       giocatori.push({
         id: `pg_${i + 1}`,
         nome: `Errante ${i + 1}`,
@@ -139,10 +151,14 @@
         scarti: [],
         campo: [],
         status: [],
-        // §2.2 v0.6: slot "talismano" al posto di "accessorio".
-        equipaggiamento: { arma: null, armatura: null, talismano: null },
+        // §2.2 v0.6: slot equipaggiamento popolati dall'equip iniziale della classe.
+        equipaggiamento: { arma: _ea ? _ea.id : null, armatura: null, talismano: _et ? _et.id : null },
         // §5.11 v0.6: istanze per-PG dell'equipaggiamento (livello, forma).
-        equip_istanze: { arma: null, armatura: null, talismano: null },
+        equip_istanze: {
+          arma:      _istanza_equip(_ea),
+          armatura:  null,
+          talismano: _istanza_equip(_et),
+        },
         // §5.11 v0.6: null se nessuna scelta di forma finale pendente.
         scelta_forma_pendente: null,
         ko: false,
@@ -747,6 +763,15 @@
     }
     applica_nuovo_stato(r.state);
   }
+
+  // Hook di debug: espone stato_gioco e db dalla closure all'oggetto window._t.
+  // Usato durante i test manuali per leggere/scrivere lo stato dalla console.
+  // Esempio: _t.s (legge stato), _t.s = nuovoStato (scrive + re-render), _t.d (db).
+  window._t = {
+    get s()  { return stato_gioco; },
+    set s(v) { stato_gioco = v; render(); },
+    get d()  { return db; },
+  };
 
   // Avvio.
   init();
