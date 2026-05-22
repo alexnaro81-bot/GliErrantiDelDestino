@@ -195,7 +195,8 @@ function genera_bundle() {
     var png      = await fetch_csv('png.csv');
     var attacchi = await fetch_csv('attacchi.csv');
     var abilita  = await fetch_csv('abilita.csv');
-    var oggetti  = await fetch_csv('oggetti.csv');
+    var equipaggiamenti = await fetch_csv('equipaggiamenti.csv');
+    var consumabili     = await fetch_csv('consumabili.csv');
     var nemici   = await fetch_csv('nemici.csv');
     var config   = await fetch_json('config.json');
     var sinergie = await fetch_json('sinergie.json');
@@ -247,12 +248,26 @@ function genera_bundle() {
       valore_numerico: intg_null(r.valore_numerico), tag_sinergia: arr(r.tag_sinergia),
       durata: r.durata, _tipo_carta: 'abilita',
     }));
-    oggetti = oggetti.map(r => ({
+    // §1.9 v0.6: equipaggiamenti (slot arma/armatura/talismano, livelli, forme finali).
+    equipaggiamenti = equipaggiamenti.map(r => ({
+      id: r.id, nome: r.nome, slot: r.slot,
+      tag: arr(r.tag), livello: intg(r.livello) || 1,
+      livello_max: intg(r.livello_max) || 3,
+      stats_per_livello: JSON.parse(r.stats_per_livello),
+      forme_finali: JSON.parse(r.forme_finali),
+      classe_preferita: r.classe_preferita,
+      descrizione_narrativa: r.descrizione_narrativa,
+      tag_sinergia: arr(r.tag_sinergia),
+      _tipo_carta: 'equipaggiamento',
+    }));
+    // §1.9bis v0.6: consumabili (carta a uso singolo, entra in pila).
+    consumabili = consumabili.map(r => ({
       id: r.id, nome: r.nome, classe_preferita: r.classe_preferita,
-      costo_energia: intg(r.costo_energia), descrizione_narrativa: r.descrizione_narrativa,
-      effetto_meccanico: r.effetto_meccanico, tipo_oggetto: r.tipo_oggetto, slot: r.slot,
-      valore_numerico: intg_null(r.valore_numerico), tag_sinergia: arr(r.tag_sinergia),
-      durata: r.durata, _tipo_carta: 'oggetto',
+      costo_energia: intg(r.costo_energia),
+      descrizione_narrativa: r.descrizione_narrativa,
+      effetto: JSON.parse(r.effetto), target: r.target,
+      tag: arr(r.tag), tag_sinergia: arr(r.tag_sinergia),
+      _tipo_carta: 'consumabile',
     }));
     nemici = nemici.map(r => ({
       id: r.id, nome: r.nome, tag_mondo: arr(r.tag_mondo), categoria: r.categoria,
@@ -262,7 +277,7 @@ function genera_bundle() {
       tag_luogo: arr(r.tag_luogo),
     }));
 
-    return { mondi, luoghi, eventi, twist, png, attacchi, abilita, oggetti, nemici, config, sinergie };
+    return { mondi, luoghi, eventi, twist, png, attacchi, abilita, equipaggiamenti, consumabili, nemici, config, sinergie };
   };
 })();
 `;
