@@ -767,10 +767,12 @@
   // Hook di debug: espone stato_gioco e db dalla closure all'oggetto window._t.
   // Usato durante i test manuali per leggere/scrivere lo stato dalla console.
   // Esempio: _t.s (legge stato), _t.s = nuovoStato (scrive + re-render), _t.d (db).
+  // _t.render() permette di forzare il re-render dopo mutazioni dirette dello stato.
   window._t = {
     get s()  { return stato_gioco; },
     set s(v) { stato_gioco = v; render(); },
     get d()  { return db; },
+    render:  function() { render(); },
   };
 
   // Avvio.

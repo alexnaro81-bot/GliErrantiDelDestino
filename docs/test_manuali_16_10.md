@@ -64,11 +64,11 @@ E aggiornare il mapping + il `return` finale per includere `equipaggiamenti` e `
 | T-16.1-01 | Bootstrap DB — nessun crash al caricamento | §16.1 | Alta | Browser/Node | si |
 | T-16.1-02 | PGState v0.6 — campi e slot equipaggiamento per classe | §16.1 §2.2 | Alta | Browser | si |
 | T-16.3-01 | Pipeline danno — caso nominale senza modificatori | §16.3 §5.7 | Alta | Browser | si |
-| T-16.3-02 | Pipeline danno — vulnerabilità ×1.5 (luce vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | no→BUG-B3 (corretto, ripetere) |
-| T-16.3-03 | Pipeline danno — resistenza ×0.5 (perforante vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | (BUG-B3 corretto, ripetere) |
-| T-16.3-04 | Pipeline danno — scudo assorbe prima della difesa | §16.3 §5.7 step 6–7 | Media | Browser | |
-| T-16.4-01 | Attacco base — primo gratuito, flag correttamente settato | §16.4 §5.2bis | Alta | Browser | |
-| T-16.4-02 | Attacco base — secondo a pagamento, EN scalata | §16.4 §5.2bis | Alta | Browser | |
+| T-16.3-02 | Pipeline danno — vulnerabilità ×1.5 (luce vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | si |
+| T-16.3-03 | Pipeline danno — resistenza ×0.5 (perforante vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | si |
+| T-16.3-04 | Pipeline danno — scudo assorbe prima della difesa | §16.3 §5.7 step 6–7 | Media | Browser | ? |
+| T-16.4-01 | Attacco base — primo gratuito, flag correttamente settato | §16.4 §5.2bis | Alta | Browser | si |
+| T-16.4-02 | Attacco base — secondo a pagamento, EN scalata | §16.4 §5.2bis | Alta | Browser | si |
 | T-16.4-03 | Attacco base — EN insufficiente per secondo attacco (caso limite) | §16.4 §5.2bis | Media | Browser | |
 | T-16.5-01 | σ2 SIN_ARMONIA_SOLARE — attiva con qualsiasi talismano luce | §16.5 §5.6.4 | Alta | Browser | |
 | T-16.5-02 | σ2 + attacco base — bonus +1 danno visibile in pipeline | §16.5 §16.3 | Alta | Browser | |
@@ -344,10 +344,15 @@ _t.s = s2;
 - Se costo_extra = 0, il bottone rimane abilitato anche a 0 EN (0 ≤ 0 è true).
 - Per testare il vero "disabilitato": modifica l'istanza arma con costo_extra = 1 e porta EN a 0:
   ```javascript
-  _t.s.giocatori[0].equip_istanze.arma = {livello: 2, forma_scelta_id: null, tag_correnti: ['taglio','impatto']};
-  // al Lv2: costo_extra = 0 ancora (vedi CSV). Per Lv3: costo_extra=1.
-  _t.s.giocatori[0].equip_istanze.arma.livello = 3;
-  render(); // forza aggiornamento UI
+  // Clona correttamente lo stato per triggherare il setter e il re-render.
+  const s3 = Object.assign({}, _t.s);
+  s3.giocatori = s3.giocatori.map((p, i) => i === _t.s.turno_di
+    ? {...p, equip_istanze: {...p.equip_istanze, arma: {livello: 3, forma_scelta_id: null, tag_correnti: ['taglio','impatto']}}}
+    : p);
+  _t.s = s3; // setter: aggiorna stato + chiama render()
+  // Alternativa con mutazione diretta (meno sicura, ma funziona):
+  // _t.s.giocatori[0].equip_istanze.arma = {livello: 3, forma_scelta_id: null, tag_correnti: ['taglio','impatto']};
+  // _t.render(); // usa _t.render(), NON render() che non è globale
   ```
 - Badge mostra "1 EN". Con energia = 0, bottone **disabilitato** (grigio).
 - Tentativo di click non produce `attacco_base` in Cronaca.
