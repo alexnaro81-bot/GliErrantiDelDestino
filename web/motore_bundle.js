@@ -5525,6 +5525,8 @@ var GED_EXPORTS = {
       id: r.id, nome: r.nome, tag_mondo: r.tag_mondo, tipo_nodo: r.tipo_nodo,
       descrizione_narrativa: r.descrizione_narrativa, effetto_meccanico: r.effetto_meccanico,
       nemici_associati: arr(r.nemici_associati), universale: bool(r.universale),
+      // §1.3 v0.6: vuln/res del luogo, usati da pipeline_danno step 4.
+      vulnerabilita_luogo: arr(r.vulnerabilita_luogo), resistenza_luogo: arr(r.resistenza_luogo),
     }));
     eventi = eventi.map(r => ({
       id: r.id, nome: r.nome, tag_mondo: r.tag_mondo, trigger: r.trigger,
@@ -5546,14 +5548,24 @@ var GED_EXPORTS = {
       id: r.id, nome: r.nome, classe_preferita: r.classe_preferita,
       costo_energia: intg(r.costo_energia), descrizione_narrativa: r.descrizione_narrativa,
       effetto_meccanico: r.effetto_meccanico, target: r.target,
-      valore_numerico: intg(r.valore_numerico), tag_sinergia: arr(r.tag_sinergia),
+      valore_numerico: intg(r.valore_numerico),
+      // §1.7 v0.6: tag usato da pipeline_danno step 4 per match vuln/res.
+      tag: arr(r.tag), tag_sinergia: arr(r.tag_sinergia),
+      // §5.7 step 9: applica_status (JSON inline o null).
+      applica_status: (r.applica_status && r.applica_status.trim() !== '') ? JSON.parse(r.applica_status) : null,
+      ignora_difesa: bool(r.ignora_difesa), ignora_scudo: bool(r.ignora_scudo),
+      salta_step_tag: bool(r.salta_step_tag),
       durata: r.durata, _tipo_carta: 'attacco',
     }));
     abilita = abilita.map(r => ({
       id: r.id, nome: r.nome, classe_preferita: r.classe_preferita,
       costo_energia: intg(r.costo_energia), descrizione_narrativa: r.descrizione_narrativa,
       effetto_meccanico: r.effetto_meccanico, target: r.target,
-      valore_numerico: intg_null(r.valore_numerico), tag_sinergia: arr(r.tag_sinergia),
+      valore_numerico: intg_null(r.valore_numerico),
+      // §1.8 v0.6: tag (array), salta_step_tag, effetto_strutturato.
+      tag: arr(r.tag), tag_sinergia: arr(r.tag_sinergia),
+      salta_step_tag: bool(r.salta_step_tag),
+      effetto_strutturato: (r.effetto_strutturato && r.effetto_strutturato !== '') ? JSON.parse(r.effetto_strutturato) : null,
       durata: r.durata, _tipo_carta: 'abilita',
     }));
     // §1.9 v0.6: equipaggiamenti (slot arma/armatura/talismano, livelli, forme finali).
@@ -5583,6 +5595,9 @@ var GED_EXPORTS = {
       comportamento: r.comportamento, abilita_speciale: nul(r.abilita_speciale),
       trigger_abilita: nul(r.trigger_abilita), ricompensa_narrativa: r.ricompensa_narrativa,
       tag_luogo: arr(r.tag_luogo),
+      // §1.10 v0.6: vuln/res usati dalla pipeline_danno step 4 (§5.7).
+      vulnerabilita: arr(r.vulnerabilita), resistenza: arr(r.resistenza),
+      essenza_drop: arr(r.essenza_drop),
     }));
 
     return { mondi, luoghi, eventi, twist, png, attacchi, abilita, equipaggiamenti, consumabili, nemici, config, sinergie };

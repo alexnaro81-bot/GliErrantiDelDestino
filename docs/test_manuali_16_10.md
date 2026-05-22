@@ -37,6 +37,16 @@ var consumabili     = await fetch_csv('consumabili.csv');
 ```
 E aggiornare il mapping + il `return` finale per includere `equipaggiamenti` e `consumabili` (con parsing JSON di `stats_per_livello` e `forme_finali` tramite `JSON.parse`), rimuovendo `oggetti`. Dopo la modifica, rigenerare con `node strumenti/build_browser.js`.
 
+### BUG-B3 — `carica_dati_browser` non mappa tag, vuln/res e altri campi v0.6
+
+**Sintomo:** Vulnerabilità e resistenza ignorate nel browser (T-16.3-02/03): danno sempre uguale al caso base, senza moltiplicatore ×1.5/×0.5. Altre meccaniche potenzialmente silenti: `applica_status`, `ignora_difesa`, `ignora_scudo`, `salta_step_tag`, `effetto_strutturato`, bonus vuln/res dei luoghi.
+
+**Causa:** Il mapping duck-typed in `carica_dati_browser` (in `strumenti/build_browser.js`) era rimasto alla versione pre-v0.6. Campi aggiunti nel v0.6 (`tag` per attacchi/abilità, `vulnerabilita`/`resistenza`/`essenza_drop` per nemici, `vulnerabilita_luogo`/`resistenza_luogo` per luoghi) non erano presenti nel mapping, risultando `undefined` a runtime. La pipeline_danno riceveva `tag_fonte = []` e `vuln = []` → nessun match → ×1.5 mai applicato.
+
+**Fix applicato (22/05/2026):** `strumenti/build_browser.js` aggiornato con i campi mancanti; bundle rigenerato. Verificare: ricaricare il browser con Ctrl+Shift+R per svuotare la cache.
+
+---
+
 ### BUG-B2 — `setup_partita_browser` non applica il C3-fix (slot equipaggiamento null)
 
 **File:** `web/app.js` righe 143–145
@@ -49,30 +59,30 @@ E aggiornare il mapping + il `return` finale per includere `equipaggiamenti` e `
 
 ## Indice dei test
 
-| ID | Nome | Roadmap | Priorità | Ambiente |
+| ID | Nome | Roadmap | Priorità | Ambiente | Superato |
 |---|---|---|---|---|
-| T-16.1-01 | Bootstrap DB — nessun crash al caricamento | §16.1 | Alta | Browser/Node |
-| T-16.1-02 | PGState v0.6 — campi e slot equipaggiamento per classe | §16.1 §2.2 | Alta | Browser |
-| T-16.3-01 | Pipeline danno — caso nominale senza modificatori | §16.3 §5.7 | Alta | Browser |
-| T-16.3-02 | Pipeline danno — vulnerabilità ×1.5 (luce vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser |
-| T-16.3-03 | Pipeline danno — resistenza ×0.5 (perforante vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser |
-| T-16.3-04 | Pipeline danno — scudo assorbe prima della difesa | §16.3 §5.7 step 6–7 | Media | Browser |
-| T-16.4-01 | Attacco base — primo gratuito, flag correttamente settato | §16.4 §5.2bis | Alta | Browser |
-| T-16.4-02 | Attacco base — secondo a pagamento, EN scalata | §16.4 §5.2bis | Alta | Browser |
-| T-16.4-03 | Attacco base — EN insufficiente per secondo attacco (caso limite) | §16.4 §5.2bis | Media | Browser |
-| T-16.5-01 | σ2 SIN_ARMONIA_SOLARE — attiva con qualsiasi talismano luce | §16.5 §5.6.4 | Alta | Browser |
-| T-16.5-02 | σ2 + attacco base — bonus +1 danno visibile in pipeline | §16.5 §16.3 | Alta | Browser |
-| T-16.5-03 | σ2 disattivazione — rimozione slot azzera sinergie_attive | §16.5 §5.6.4 | Media | Browser |
-| T-16.6-01 | σ1 SIN_DANZA_LAME — 2 carte taglio, log sinergia_attivata | §16.6 §5.6.4 | Alta | Browser |
-| T-16.6-02 | σ1 soglia non raggiunta — 1 carta taglio, nessun log σ1 | §16.6 §5.6.4 | Media | Browser |
-| T-16.6-03 | σ1 reset — contatore carte_giocate_per_tag azzerato a inizio turno | §16.6 §5.6.4 | Media | Browser |
-| T-16.7-01 | Evoluzione Lv1→Lv2 — essenze sufficienti, log equip_evoluto | §16.7 §5.11 | Alta | Browser |
-| T-16.7-02 | Evoluzione Lv2→Lv3 + scelta forma finale libero — flusso completo | §16.7 §5.11 | Alta | Browser |
-| T-16.7-03 | Forma finale condizionale — trigger kill_categoria=boss (post M1-fix) | §16.7 §5.11 | Alta | Browser |
-| T-16.7-04 | Essenze insufficienti — nessuna evoluzione, livello invariato | §16.7 §5.11 | Media | Browser |
-| T-16.9-01 | UI — badge "gratuito" e badge costo EN su attacco base | §16.9 §8 §5.2bis | Alta | Browser |
-| T-16.9-02 | UI — pillole essenze e pillole σ2 nella card PG | §16.9 §8 §5.11 | Media | Browser |
-| T-16.9-03 | UI — modale forma finale si apre e conferma scelta | §16.9 §8 §5.11 | Alta | Browser |
+| T-16.1-01 | Bootstrap DB — nessun crash al caricamento | §16.1 | Alta | Browser/Node | si |
+| T-16.1-02 | PGState v0.6 — campi e slot equipaggiamento per classe | §16.1 §2.2 | Alta | Browser | si |
+| T-16.3-01 | Pipeline danno — caso nominale senza modificatori | §16.3 §5.7 | Alta | Browser | si |
+| T-16.3-02 | Pipeline danno — vulnerabilità ×1.5 (luce vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | no→BUG-B3 (corretto, ripetere) |
+| T-16.3-03 | Pipeline danno — resistenza ×0.5 (perforante vs Lupo d'Ombra) | §16.3 §5.7 step 4 | Alta | Browser | (BUG-B3 corretto, ripetere) |
+| T-16.3-04 | Pipeline danno — scudo assorbe prima della difesa | §16.3 §5.7 step 6–7 | Media | Browser | |
+| T-16.4-01 | Attacco base — primo gratuito, flag correttamente settato | §16.4 §5.2bis | Alta | Browser | |
+| T-16.4-02 | Attacco base — secondo a pagamento, EN scalata | §16.4 §5.2bis | Alta | Browser | |
+| T-16.4-03 | Attacco base — EN insufficiente per secondo attacco (caso limite) | §16.4 §5.2bis | Media | Browser | |
+| T-16.5-01 | σ2 SIN_ARMONIA_SOLARE — attiva con qualsiasi talismano luce | §16.5 §5.6.4 | Alta | Browser | |
+| T-16.5-02 | σ2 + attacco base — bonus +1 danno visibile in pipeline | §16.5 §16.3 | Alta | Browser | |
+| T-16.5-03 | σ2 disattivazione — rimozione slot azzera sinergie_attive | §16.5 §5.6.4 | Media | Browser | |
+| T-16.6-01 | σ1 SIN_DANZA_LAME — 2 carte taglio, log sinergia_attivata | §16.6 §5.6.4 | Alta | Browser | |
+| T-16.6-02 | σ1 soglia non raggiunta — 1 carta taglio, nessun log σ1 | §16.6 §5.6.4 | Media | Browser | |
+| T-16.6-03 | σ1 reset — contatore carte_giocate_per_tag azzerato a inizio turno | §16.6 §5.6.4 | Media | Browser | |
+| T-16.7-01 | Evoluzione Lv1→Lv2 — essenze sufficienti, log equip_evoluto | §16.7 §5.11 | Alta | Browser | |
+| T-16.7-02 | Evoluzione Lv2→Lv3 + scelta forma finale libero — flusso completo | §16.7 §5.11 | Alta | Browser | |
+| T-16.7-03 | Forma finale condizionale — trigger kill_categoria=boss (post M1-fix) | §16.7 §5.11 | Alta | Browser | |
+| T-16.7-04 | Essenze insufficienti — nessuna evoluzione, livello invariato | §16.7 §5.11 | Media | Browser | |
+| T-16.9-01 | UI — badge "gratuito" e badge costo EN su attacco base | §16.9 §8 §5.2bis | Alta | Browser | |
+| T-16.9-02 | UI — pillole essenze e pillole σ2 nella card PG | §16.9 §8 §5.11 | Media | Browser | |
+| T-16.9-03 | UI — modale forma finale si apre e conferma scelta | §16.9 §8 §5.11 | Alta | Browser | |
 
 ---
 
