@@ -28,12 +28,9 @@
 //     ora i 3 slot restano a null e l'equipaggiamento iniziale-da-classe
 //     viene gestito in PARKING_LOT_EQUIP_INIZIALE_CLASSE.
 //
-// IMPORTANTE: con questo sotto-step `db.oggetti` non esiste piu': e' stato
-// sdoppiato in `db.equipaggiamenti` e `db.consumabili`. Il modulo
-// combattimento.js usa ancora `db.oggetti` in alcuni punti: verra' aggiornato
-// nei sotto-step 16.3-16.9 della ROADMAP. Allo step 16.1 e' atteso che il
-// motore di combattimento non sia eseguibile end-to-end: l'unico criterio di
-// "fatto" e' `node setup.js` che carica tutti i CSV senza errori.
+// IMPORTANTE: `db.oggetti` non esiste piu': e' stato sdoppiato in
+// `db.equipaggiamenti` e `db.consumabili` (step 16.1). Tutti i siti che
+// usavano `db.oggetti` sono stati aggiornati (fix C1, step 16.11).
 //
 // === Sotto-step 16.6 (ROADMAP, regolamento v0.6) - "Sinergie σ1" =============
 // Aggiunte applicate in questo file dal sotto-step 16.6 (solo PGState §2.2):
@@ -151,6 +148,19 @@ function to_bool(s, contesto) {
 function to_array_pipe(s) {
     if (s === '' || s === null || s === undefined) return [];
     return s.split('|').map(x => x.trim()).filter(x => x.length > 0);
+}
+
+// §M5-fix: wrapper tag-specifico che avverte se un valore contiene caratteri
+// accentati. I confronti tag sono stringa-stringa: un accento rotto causa
+// match silenziosi falliti (furtivita !== furtività).
+function to_tag_array(s, ctx) {
+    const arr = to_array_pipe(s);
+    arr.forEach(t => {
+        if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿ]/i.test(t)) {
+            console.warn(`[avviso tag accentato] ${ctx}: "${t}" — normalizzare a forma senza accento.`);
+        }
+    });
+    return arr;
 }
 
 function to_string_nullable(s) {
@@ -369,8 +379,8 @@ function parse_attacchi(righe) {
         // §1.7 v0.6: tag (array pipe-separato di tag elementali/fisici).
         // Usato dallo step 4 della pipeline danno per il match vuln/res.
         // L'authoring puo' aver messo un singolo tag senza pipe (es. "taglio");
-        // to_array_pipe lo gestisce come array di 1 elemento.
-        const tag = to_array_pipe(r.tag);
+        // to_tag_array lo gestisce come array di 1 elemento e avverte sugli accenti (§M5-fix).
+        const tag = to_tag_array(r.tag, ctx + ' campo tag');
         return {
             id: r.id,
             nome: r.nome,
@@ -388,7 +398,11 @@ function parse_attacchi(righe) {
             ignora_scudo: r.ignora_scudo === '' || r.ignora_scudo === undefined
                 ? false
                 : to_bool(r.ignora_scudo, ctx + ' campo ignora_scudo'),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            // §M3-fix: tag_sinergia = tag tematici secondari, distinti da `tag`
+            // (usato dal motore per match vulnerabilita'/resistenza). Parsato e
+            // conservato nel DB per un futuro sistema di sinergie tematiche;
+            // nessuna funzione del motore lo legge ancora.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             durata: 'immediato',
             _tipo_carta: 'attacco',  // helper per gioca_carta (§5.5)
         };
@@ -418,8 +432,10 @@ function parse_abilita(righe) {
             // §1.8 v0.6: tag opzionale dell'abilita'. Anche se l'abilita' non
             // fa danno, e' usato dal conteggio carte_giocate_per_tag_turno per
             // la sinergia σ1 (§5.6). Cella vuota = array vuoto.
-            tag: to_array_pipe(r.tag),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             durata: r.durata,
             // §1.8 v0.6: salta_step_tag (bool). Se true e l'abilita' infligge
             // danno, la pipeline (§5.7 step 4) salta il match tag vs vuln/res:
@@ -427,6 +443,12 @@ function parse_abilita(righe) {
             salta_step_tag: r.salta_step_tag === '' || r.salta_step_tag === undefined
                 ? false
                 : to_bool(r.salta_step_tag, ctx + ' campo salta_step_tag'),
+            // §S4-fix: effetto_strutturato = array JSON di op meccaniche.
+            // Usato da _risolvi_abilita in luogo del parsing regex su effetto_meccanico.
+            // Null se la colonna e' assente (retrocompatibilita' con carte di test).
+            effetto_strutturato: (r.effetto_strutturato && r.effetto_strutturato !== '')
+                ? JSON.parse(r.effetto_strutturato)
+                : null,
             _tipo_carta: 'abilita',
         };
     });
@@ -509,14 +531,16 @@ function parse_equipaggiamenti(righe) {
             id: r.id,
             nome: r.nome,
             slot: r.slot,
-            tag: to_array_pipe(r.tag),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
             livello,
             livello_max,
             stats_per_livello,
             forme_finali,
             classe_preferita: r.classe_preferita,
             descrizione_narrativa: r.descrizione_narrativa,
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             _tipo_carta: 'equipaggiamento',
         };
     });
@@ -558,8 +582,10 @@ function parse_consumabili(righe) {
             descrizione_narrativa: r.descrizione_narrativa,
             effetto,
             target: r.target,
-            tag: to_array_pipe(r.tag),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             _tipo_carta: 'consumabile',
         };
     });
@@ -607,8 +633,8 @@ function parse_nemici(righe) {
             // danno §5.7 step 4, applicano moltiplicatore x1.5 / x0.5 al danno
             // se la FONTE (carta o arma) include un tag matchante. essenza_drop
             // lista le categorie di essenze rilasciate alla sconfitta (§5.11).
-            vulnerabilita: to_array_pipe(r.vulnerabilita),
-            resistenza: to_array_pipe(r.resistenza),
+            vulnerabilita: to_tag_array(r.vulnerabilita, ctx + ' campo vulnerabilita'),
+            resistenza: to_tag_array(r.resistenza, ctx + ' campo resistenza'),
             essenza_drop,
         };
     });
@@ -622,8 +648,7 @@ function parse_nemici(righe) {
 // Cambiamenti v0.6:
 //   - oggetti.csv RIMOSSO. Sostituito da equipaggiamenti.csv + consumabili.csv.
 //   - Restituisce due nuovi pool: db.equipaggiamenti, db.consumabili.
-//     `db.oggetti` non esiste piu': il codice che lo usa va aggiornato nei
-//     sotto-step 16.3-16.9 della ROADMAP.
+//     `db.oggetti` non esiste piu': tutti i siti aggiornati (fix C1, 16.11).
 // -----------------------------------------------------------------------------
 function carica_dati(dir_dati) {
     const base = path.resolve(dir_dati);
@@ -991,6 +1016,19 @@ function _crea_pg(id, nome, classe, db, rng_state) {
     const essenze_iniziali = {};
     for (const tag of ENUM_ESSENZA_TAG) essenze_iniziali[tag] = 0;
 
+    // §C3-fix: equipaggiamento iniziale per classe (§2.2, PARKING_LOT_EQUIP_INIZIALE_CLASSE chiuso).
+    // Priorita': slot+classe precisa → slot+universale → null.
+    // L'armatura non e' presente nei CSV correnti: slot resta null.
+    const pick_equip = (slot) =>
+        db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === classe)
+        || db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === 'universale')
+        || null;
+    const istanza_equip = (equip) => equip
+        ? { livello: 1, forma_scelta_id: null, tag_correnti: [...equip.tag] }
+        : null;
+    const equip_arma      = pick_equip('arma');
+    const equip_talismano = pick_equip('talismano');
+
     return {
         pg: {
             id,
@@ -1005,16 +1043,11 @@ function _crea_pg(id, nome, classe, db, rng_state) {
             campo: [],
             status: [],
             // §2.2 v0.6: i 3 slot. "accessorio" e' rinominato in "talismano".
-            // Il regolamento prescrive che i 3 slot siano sempre OCCUPATI
-            // (anche al setup, dall'equipaggiamento iniziale della classe).
-            // Per ora restano null: la mappatura "classe -> equip iniziali"
-            // richiede classi.csv + un piccolo motore di assegnazione che
-            // verra' implementato in PARKING_LOT_EQUIP_INIZIALE_CLASSE
-            // (probabilmente come sotto-step del 16.7 o successivo).
+            // Slot popolati dall'equipaggiamento iniziale della classe (C3-fix).
             equipaggiamento: {
-                arma: null,
-                armatura: null,
-                talismano: null,
+                arma:      equip_arma      ? equip_arma.id      : null,
+                armatura:  null,
+                talismano: equip_talismano ? equip_talismano.id : null,
             },
 
             // === Sotto-step 16.7 (ROADMAP, regolamento v0.6 §5.11) ============
@@ -1045,16 +1078,11 @@ function _crea_pg(id, nome, classe, db, rng_state) {
             //                      come materializzazione esplicita per non
             //                      doverlo ricalcolare ogni volta.
             //
-            // Tutti e tre gli slot iniziano a null (coerente con
-            // equipaggiamento[slot]==null al setup, vedi
-            // PARKING_LOT_EQUIP_INIZIALE_CLASSE). Quando in futuro saranno
-            // popolati con gli equip iniziali della classe, va costruita anche
-            // l'istanza corrispondente con { livello: 1, forma_scelta_id: null,
-            // tag_correnti: [...equip.tag] }.
+            // Istanze create a Lv1 per gli slot equipaggiati al setup (C3-fix).
             equip_istanze: {
-                arma: null,
-                armatura: null,
-                talismano: null,
+                arma:      istanza_equip(equip_arma),
+                armatura:  null,
+                talismano: istanza_equip(equip_talismano),
             },
 
             // === Sotto-step 16.7 (ROADMAP, §5.11 Fase 2) ======================

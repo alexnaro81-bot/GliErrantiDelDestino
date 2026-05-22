@@ -24,6 +24,13 @@
 'use strict';
 
 const { rng, rng_int, mescola } = require('./setup');
+// §S2-fix: dipendenza circolare esplorazione → combattimento. Node.js risolve i
+// require circolari via cache-modulo: al momento dell'esecuzione delle funzioni
+// entrambi i moduli sono gia' completamente caricati, quindi e' sicuro. Spostato
+// qui (invece che dentro ogni funzione) per rendere esplicita la dipendenza e
+// ridurre il rischio in ambienti non-standard (es. worker thread, bundler).
+const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
+    require('./combattimento');
 
 // -----------------------------------------------------------------------------
 // Helper: clone, log, find. Stessa firma di combattimento.js.
@@ -111,8 +118,6 @@ function risolvi_nodo_riposo(state, db) {
     // salta direttamente alla rivalutazione trigger forme finali rimaste.
     // Vedi nota a fine funzione per dove si setta il flag.
     if (nodo.parte_riposo_applicata) {
-        const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
-            require('./combattimento');
         for (let i = 0; i < s.giocatori.length; i++) {
             if (s.giocatori[i].ko) continue;
             // Auto-evoluzione: gli equip che hanno raggiunto il Lv3 nel passo
@@ -187,9 +192,6 @@ function risolvi_nodo_riposo(state, db) {
     // UI potra' chiamare valuta_trigger_forme_finali manualmente dopo ogni
     // conferma_forma_finale per concatenare bivi nello stesso riposo: lascio
     // questa scelta al passo UI per non far esplodere l'ambito di 16.7).
-    const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
-        require('./combattimento');
-
     // Fase 1: auto-evoluzione per tutti i PG vivi.
     for (let i = 0; i < s.giocatori.length; i++) {
         if (s.giocatori[i].ko) continue;
@@ -246,8 +248,8 @@ function risolvi_nodo_tesoro(state, db) {
     for (let i = 0; i < s.giocatori.length; i++) {
         const pg = s.giocatori[i];
         if (pg.ko) continue;
-        // Pool: universali + classe del PG.
-        const pool = db.oggetti.filter(
+        // Pool: universali + classe del PG (equipaggiamenti + consumabili; C1-fix).
+        const pool = db.equipaggiamenti.concat(db.consumabili).filter(
             o => o.classe_preferita === 'universale' || o.classe_preferita === pg.classe
         );
         if (pool.length === 0) continue;
@@ -547,10 +549,11 @@ function _applica_singola_modifica(state, modifica, db) {
             }
             for (const i of destinatari) {
                 const pg = s.giocatori[i];
-                // Cerca la definizione della carta per il nome narrativo.
+                // Cerca la definizione della carta per il nome narrativo (C1-fix).
                 const def = db.attacchi.find(c => c.id === carta_id)
                        || db.abilita.find(c => c.id === carta_id)
-                       || db.oggetti.find(c => c.id === carta_id);
+                       || db.equipaggiamenti.find(c => c.id === carta_id)
+                       || db.consumabili.find(c => c.id === carta_id);
                 pg.scarti.push(carta_id);
                 s = _log_append(s, 'ricompensa', null, pg.id,
                     { carta: carta_id, dove: 'scarti' },

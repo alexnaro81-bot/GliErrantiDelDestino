@@ -45,12 +45,9 @@ var GED = window.GED;
 //     ora i 3 slot restano a null e l'equipaggiamento iniziale-da-classe
 //     viene gestito in PARKING_LOT_EQUIP_INIZIALE_CLASSE.
 //
-// IMPORTANTE: con questo sotto-step `db.oggetti` non esiste piu': e' stato
-// sdoppiato in `db.equipaggiamenti` e `db.consumabili`. Il modulo
-// combattimento.js usa ancora `db.oggetti` in alcuni punti: verra' aggiornato
-// nei sotto-step 16.3-16.9 della ROADMAP. Allo step 16.1 e' atteso che il
-// motore di combattimento non sia eseguibile end-to-end: l'unico criterio di
-// "fatto" e' `node setup.js` che carica tutti i CSV senza errori.
+// IMPORTANTE: `db.oggetti` non esiste piu': e' stato sdoppiato in
+// `db.equipaggiamenti` e `db.consumabili` (step 16.1). Tutti i siti che
+// usavano `db.oggetti` sono stati aggiornati (fix C1, step 16.11).
 //
 // === Sotto-step 16.6 (ROADMAP, regolamento v0.6) - "Sinergie σ1" =============
 // Aggiunte applicate in questo file dal sotto-step 16.6 (solo PGState §2.2):
@@ -168,6 +165,19 @@ function to_bool(s, contesto) {
 function to_array_pipe(s) {
     if (s === '' || s === null || s === undefined) return [];
     return s.split('|').map(x => x.trim()).filter(x => x.length > 0);
+}
+
+// §M5-fix: wrapper tag-specifico che avverte se un valore contiene caratteri
+// accentati. I confronti tag sono stringa-stringa: un accento rotto causa
+// match silenziosi falliti (furtivita !== furtività).
+function to_tag_array(s, ctx) {
+    const arr = to_array_pipe(s);
+    arr.forEach(t => {
+        if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿ]/i.test(t)) {
+            console.warn(`[avviso tag accentato] ${ctx}: "${t}" — normalizzare a forma senza accento.`);
+        }
+    });
+    return arr;
 }
 
 function to_string_nullable(s) {
@@ -386,8 +396,8 @@ function parse_attacchi(righe) {
         // §1.7 v0.6: tag (array pipe-separato di tag elementali/fisici).
         // Usato dallo step 4 della pipeline danno per il match vuln/res.
         // L'authoring puo' aver messo un singolo tag senza pipe (es. "taglio");
-        // to_array_pipe lo gestisce come array di 1 elemento.
-        const tag = to_array_pipe(r.tag);
+        // to_tag_array lo gestisce come array di 1 elemento e avverte sugli accenti (§M5-fix).
+        const tag = to_tag_array(r.tag, ctx + ' campo tag');
         return {
             id: r.id,
             nome: r.nome,
@@ -405,7 +415,11 @@ function parse_attacchi(righe) {
             ignora_scudo: r.ignora_scudo === '' || r.ignora_scudo === undefined
                 ? false
                 : to_bool(r.ignora_scudo, ctx + ' campo ignora_scudo'),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            // §M3-fix: tag_sinergia = tag tematici secondari, distinti da `tag`
+            // (usato dal motore per match vulnerabilita'/resistenza). Parsato e
+            // conservato nel DB per un futuro sistema di sinergie tematiche;
+            // nessuna funzione del motore lo legge ancora.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             durata: 'immediato',
             _tipo_carta: 'attacco',  // helper per gioca_carta (§5.5)
         };
@@ -435,8 +449,10 @@ function parse_abilita(righe) {
             // §1.8 v0.6: tag opzionale dell'abilita'. Anche se l'abilita' non
             // fa danno, e' usato dal conteggio carte_giocate_per_tag_turno per
             // la sinergia σ1 (§5.6). Cella vuota = array vuoto.
-            tag: to_array_pipe(r.tag),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             durata: r.durata,
             // §1.8 v0.6: salta_step_tag (bool). Se true e l'abilita' infligge
             // danno, la pipeline (§5.7 step 4) salta il match tag vs vuln/res:
@@ -444,6 +460,12 @@ function parse_abilita(righe) {
             salta_step_tag: r.salta_step_tag === '' || r.salta_step_tag === undefined
                 ? false
                 : to_bool(r.salta_step_tag, ctx + ' campo salta_step_tag'),
+            // §S4-fix: effetto_strutturato = array JSON di op meccaniche.
+            // Usato da _risolvi_abilita in luogo del parsing regex su effetto_meccanico.
+            // Null se la colonna e' assente (retrocompatibilita' con carte di test).
+            effetto_strutturato: (r.effetto_strutturato && r.effetto_strutturato !== '')
+                ? JSON.parse(r.effetto_strutturato)
+                : null,
             _tipo_carta: 'abilita',
         };
     });
@@ -526,14 +548,16 @@ function parse_equipaggiamenti(righe) {
             id: r.id,
             nome: r.nome,
             slot: r.slot,
-            tag: to_array_pipe(r.tag),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
             livello,
             livello_max,
             stats_per_livello,
             forme_finali,
             classe_preferita: r.classe_preferita,
             descrizione_narrativa: r.descrizione_narrativa,
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             _tipo_carta: 'equipaggiamento',
         };
     });
@@ -575,8 +599,10 @@ function parse_consumabili(righe) {
             descrizione_narrativa: r.descrizione_narrativa,
             effetto,
             target: r.target,
-            tag: to_array_pipe(r.tag),
-            tag_sinergia: to_array_pipe(r.tag_sinergia),
+            tag: to_tag_array(r.tag, ctx + ' campo tag'),
+            // §M3-fix: tag_sinergia = tag tematici secondari (futuro sistema
+            // sinergie); non ancora letto dal motore. Vedi nota in parse_attacchi.
+            tag_sinergia: to_tag_array(r.tag_sinergia, ctx + ' campo tag_sinergia'),
             _tipo_carta: 'consumabile',
         };
     });
@@ -624,8 +650,8 @@ function parse_nemici(righe) {
             // danno §5.7 step 4, applicano moltiplicatore x1.5 / x0.5 al danno
             // se la FONTE (carta o arma) include un tag matchante. essenza_drop
             // lista le categorie di essenze rilasciate alla sconfitta (§5.11).
-            vulnerabilita: to_array_pipe(r.vulnerabilita),
-            resistenza: to_array_pipe(r.resistenza),
+            vulnerabilita: to_tag_array(r.vulnerabilita, ctx + ' campo vulnerabilita'),
+            resistenza: to_tag_array(r.resistenza, ctx + ' campo resistenza'),
             essenza_drop,
         };
     });
@@ -639,8 +665,7 @@ function parse_nemici(righe) {
 // Cambiamenti v0.6:
 //   - oggetti.csv RIMOSSO. Sostituito da equipaggiamenti.csv + consumabili.csv.
 //   - Restituisce due nuovi pool: db.equipaggiamenti, db.consumabili.
-//     `db.oggetti` non esiste piu': il codice che lo usa va aggiornato nei
-//     sotto-step 16.3-16.9 della ROADMAP.
+//     `db.oggetti` non esiste piu': tutti i siti aggiornati (fix C1, 16.11).
 // -----------------------------------------------------------------------------
 function carica_dati(dir_dati) {
     const base = path.resolve(dir_dati);
@@ -1008,6 +1033,19 @@ function _crea_pg(id, nome, classe, db, rng_state) {
     const essenze_iniziali = {};
     for (const tag of ENUM_ESSENZA_TAG) essenze_iniziali[tag] = 0;
 
+    // §C3-fix: equipaggiamento iniziale per classe (§2.2, PARKING_LOT_EQUIP_INIZIALE_CLASSE chiuso).
+    // Priorita': slot+classe precisa → slot+universale → null.
+    // L'armatura non e' presente nei CSV correnti: slot resta null.
+    const pick_equip = (slot) =>
+        db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === classe)
+        || db.equipaggiamenti.find(e => e.slot === slot && e.classe_preferita === 'universale')
+        || null;
+    const istanza_equip = (equip) => equip
+        ? { livello: 1, forma_scelta_id: null, tag_correnti: [...equip.tag] }
+        : null;
+    const equip_arma      = pick_equip('arma');
+    const equip_talismano = pick_equip('talismano');
+
     return {
         pg: {
             id,
@@ -1022,16 +1060,11 @@ function _crea_pg(id, nome, classe, db, rng_state) {
             campo: [],
             status: [],
             // §2.2 v0.6: i 3 slot. "accessorio" e' rinominato in "talismano".
-            // Il regolamento prescrive che i 3 slot siano sempre OCCUPATI
-            // (anche al setup, dall'equipaggiamento iniziale della classe).
-            // Per ora restano null: la mappatura "classe -> equip iniziali"
-            // richiede classi.csv + un piccolo motore di assegnazione che
-            // verra' implementato in PARKING_LOT_EQUIP_INIZIALE_CLASSE
-            // (probabilmente come sotto-step del 16.7 o successivo).
+            // Slot popolati dall'equipaggiamento iniziale della classe (C3-fix).
             equipaggiamento: {
-                arma: null,
-                armatura: null,
-                talismano: null,
+                arma:      equip_arma      ? equip_arma.id      : null,
+                armatura:  null,
+                talismano: equip_talismano ? equip_talismano.id : null,
             },
 
             // === Sotto-step 16.7 (ROADMAP, regolamento v0.6 §5.11) ============
@@ -1062,16 +1095,11 @@ function _crea_pg(id, nome, classe, db, rng_state) {
             //                      come materializzazione esplicita per non
             //                      doverlo ricalcolare ogni volta.
             //
-            // Tutti e tre gli slot iniziano a null (coerente con
-            // equipaggiamento[slot]==null al setup, vedi
-            // PARKING_LOT_EQUIP_INIZIALE_CLASSE). Quando in futuro saranno
-            // popolati con gli equip iniziali della classe, va costruita anche
-            // l'istanza corrispondente con { livello: 1, forma_scelta_id: null,
-            // tag_correnti: [...equip.tag] }.
+            // Istanze create a Lv1 per gli slot equipaggiati al setup (C3-fix).
             equip_istanze: {
-                arma: null,
-                armatura: null,
-                talismano: null,
+                arma:      istanza_equip(equip_arma),
+                armatura:  null,
+                talismano: istanza_equip(equip_talismano),
             },
 
             // === Sotto-step 16.7 (ROADMAP, §5.11 Fase 2) ======================
@@ -1914,7 +1942,7 @@ function valuta_apparizione_png(state, db) {
 // Funzioni invocabili dal motore quando il trigger giusto si verifica.
 // =============================================================================
 
-// Trigger Alleato: chiamato da _applica_danno PRIMA di marcare KO un PG.
+// Trigger Alleato: chiamato da pipeline_danno PRIMA di marcare KO un PG.
 // Se Luna Alleata e' in gioco e non ha ancora usato il salvataggio, il PG
 // resta a 1 PV invece di andare a 0. One-shot per run.
 // Ritorna true se il salvataggio e' scattato (chi chiama mette PV a 1).
@@ -1936,7 +1964,8 @@ function trigger_commercio_mercante(state, db) {
     const merc = state.png_in_gioco.find(p => p.id === 'PNG_CORVO_MERCANTE' && p.commercio_disponibile);
     if (!merc) return state;
     merc.commercio_disponibile = false;  // una sola volta per apparizione
-    const pool = db.oggetti.filter(o => o.classe_preferita === 'universale');
+    // Pool universali del mercante (equipaggiamenti + consumabili; C1-fix).
+    const pool = db.equipaggiamenti.concat(db.consumabili).filter(o => o.classe_preferita === 'universale');
     if (pool.length === 0) return state;
     for (let i = 0; i < state.giocatori.length; i++) {
         const pg = state.giocatori[i];
@@ -2133,14 +2162,8 @@ var GED_EXPORTS = {
 //     PARKING_LOT_EFFETTI_AVANZATI.
 //   - §7.1 pipeline modificatori (mondo, luogo, twist, PNG, equipaggiamento):
 //     non applicata. Solo status_attaccante/target + difesa, come da §5.7.
-//   - PARKING_LOT_ARMA_ISTANZA (16.4): pg.equipaggiamento.arma e' oggi un id
-//     stringa (vedi _risolvi_oggetto). Il regolamento §5.2bis prevede che
-//     l'arma esponga `arma.livello` e `arma.tag_correnti` (estesi dalla
-//     forma_finale_scelta al Lv3). In 16.7 introdurremo un'istanza-per-PG
-//     dell'equipaggiamento con campi mutabili (livello, tag_correnti,
-//     forma_finale_scelta). Fino ad allora, l'helper _risolvi_arma_pg legge
-//     `livello` dalla carta del db (sempre 1) e usa `carta.tag` come
-//     `tag_correnti`.
+//     [PARKING_LOT_ARMA_ISTANZA chiuso in 16.11: struttura equip_istanze creata
+//     in 16.7, livello reale letto da _risolvi_arma_pg da M2-fix. S1-fix.]
 //   - PARKING_LOT_EQUIP_INIZIALE_CLASSE (setup.js): al setup, gli slot
 //     `arma/armatura/talismano` sono `null`. Il regolamento prescrive che
 //     siano sempre occupati con l'equip iniziale della classe. Finche' non
@@ -2204,7 +2227,7 @@ function _next_log_id(state) {
 //     "puntatore stale dopo log_append".
 //   - L'immutabilita' verso l'ESTERNO della funzione e' comunque garantita
 //     perche' modifichiamo il clone interno.
-//   - Le funzioni private (_applica_danno, _applica_status_tick, ecc.) NON
+//   - Le funzioni private (_applica_status_tick, ecc.) NON
 //     clonano: lavorano in place sullo state ricevuto.
 function _log_append(state, tipo, attore, bersaglio, payload, testo_narrativo) {
     state.log.push({
@@ -2555,15 +2578,16 @@ function pesca_pg(state) {
             `${pg.nome} pesca ${da_pescare} carte.`);
     }
 
-    // §4.1 (riposo): se il PG ha bonus carte da nodo riposo, le aggiungo qui.
-    // Il bonus va OLTRE il limite mano, ma vincolato a pila/scarti disponibili.
-    // Il flag viene azzerato dopo l'uso.
+    // §4.1 (riposo) + §5.4 M4-fix: se il PG ha bonus carte da nodo riposo, le
+    // aggiungo qui. Il limite massimo e' dimensione_mano + bonus (§5.4); le
+    // eventuali carte in eccesso vengono scartate con log scarto_per_mano_piena.
+    // Il flag viene azzerato dopo la pesca.
     const pg_now = s.giocatori[s.turno_di];
     if (pg_now.bonus_carte_prossimo_turno && pg_now.bonus_carte_prossimo_turno > 0) {
         const bonus = pg_now.bonus_carte_prossimo_turno;
-        // Per il bonus: tollero che la mano superi il limite standard.
+        // §5.4 M4-fix: limite massimo esteso dal bonus.
+        const limite_max = s.config.pg.dimensione_mano + bonus;
         const prima = pg_now.mano.length;
-        // Pesca diretta senza limite (semplificazione MVP).
         for (let k = 0; k < bonus; k++) {
             if (pg_now.pila.length === 0) {
                 if (pg_now.scarti.length === 0) break;
@@ -2577,6 +2601,14 @@ function pesca_pg(state) {
         }
         const presi = pg_now.mano.length - prima;
         pg_now.bonus_carte_prossimo_turno = 0;
+        // §5.4 M4-fix: scarta l'eccesso oltre limite_max con log scarto_per_mano_piena.
+        while (pg_now.mano.length > limite_max) {
+            const scartata = pg_now.mano.pop();
+            pg_now.scarti.push(scartata);
+            s = _log_append(s, 'fase_cambiata', pg.id, null,
+                { evento: 'scarto_per_mano_piena', carta: scartata },
+                `${pg.nome} ha la mano piena: scarta ${scartata}.`);
+        }
         s = _log_append(s, 'fase_cambiata', pg.id, null,
             { evento: 'bonus_carta_riposo', carte: presi },
             `${pg.nome} pesca ${presi} carte bonus dal riposo.`);
@@ -2619,10 +2651,11 @@ function gioca_carta(state, pg_id, carta_id, target_id, db) {
     }
 
     // Recupero la definizione della carta dal database (puo essere attacco,
-    // abilita o oggetto: cerco in tutti e tre i pool).
+    // abilita, equipaggiamento o consumabile: cerco in tutti i pool; C1-fix).
     const carta = db.attacchi.find(c => c.id === carta_id)
               || db.abilita.find(c => c.id === carta_id)
-              || db.oggetti.find(c => c.id === carta_id);
+              || db.equipaggiamenti.find(c => c.id === carta_id)
+              || db.consumabili.find(c => c.id === carta_id);
     if (!carta) {
         return { ok: false, state: null,
             errore: { codice: 'ERR_CARTA_NON_IN_MANO',
@@ -2699,7 +2732,7 @@ function gioca_carta(state, pg_id, carta_id, target_id, db) {
             s = _risolvi_attacco(s, pg_idx, carta, target_id, db);
             break;
         case 'abilita':
-            s = _risolvi_abilita(s, pg_idx, carta);
+            s = _risolvi_abilita(s, pg_idx, carta, db);
             break;
         case 'oggetto':
             s = _risolvi_oggetto(s, pg_idx, carta);
@@ -2764,12 +2797,9 @@ function gioca_carta(state, pg_id, carta_id, target_id, db) {
 //  10. Ritorno alla fase ATTESA_AZIONE_PG (a meno di esiti terminali).
 // =============================================================================
 
-// Helper: risolve l'oggetto "arma" del PG dal db.
-// Oggi pg.equipaggiamento.arma e' un id stringa (vedi _risolvi_oggetto) o null.
+// Helper: risolve l'arma del PG dal db, applicando il livello reale letto da
+// pg.equip_istanze.arma (M2-fix; PARKING_LOT_ARMA_ISTANZA chiuso in 16.11).
 // Ritorna { ok: true, arma } se trovata, oppure { ok: false, errore } se assente.
-// PARKING_LOT_ARMA_ISTANZA: in 16.7 questo helper dovra' leggere un'istanza
-// per-PG (con `livello` mutabile e `tag_correnti` esteso dalla forma finale).
-// Per ora restituisce la carta del db cosi com'e' (livello = 1 al setup).
 function _risolvi_arma_pg(pg, db) {
     if (!pg.equipaggiamento || !pg.equipaggiamento.arma) {
         return { ok: false, errore: {
@@ -2795,7 +2825,10 @@ function _risolvi_arma_pg(pg, db) {
             messaggio: `Lo slot arma di ${pg.nome} contiene "${arma_id}", che non e' un'arma (slot=${arma.slot})`,
         }};
     }
-    return { ok: true, arma };
+    // §5.11 M2-fix: usa il livello reale dell'istanza per-PG, non quello del CSV.
+    const istanza = pg.equip_istanze && pg.equip_istanze.arma;
+    const livello  = istanza ? istanza.livello : 1;
+    return { ok: true, arma: { ...arma, livello } };
 }
 
 // Helper: costruisce lo pseudo_attacco_base che verra' passato a pipeline_danno.
@@ -2996,80 +3029,57 @@ function _risolvi_attacco(state, pg_idx, carta, target_id, db) {
     return s;
 }
 
-function _risolvi_abilita(state, pg_idx, carta) {
+function _risolvi_abilita(state, pg_idx, carta, db) {
+    // §S4-fix: effetti letti da carta.effetto_strutturato (array JSON) invece
+    // di regex sul testo narrativo. Elimina il rischio di match accidentali su
+    // parole chiave nella descrizione (es. "scudo" narrativo != scudo meccanico).
     // Privata: NON clona.
     let s = state;
     const pg = s.giocatori[pg_idx];
-
-    // Effetti base riconosciuti dal valore_numerico + descrizione semantica.
-    // Casi base: cura (valore_numerico>0, target=se|alleato|tutti), scudo
-    // (descrizione contiene "scudo"), pesca (descrizione contiene "pesca N").
-    //
-    // Per ora gestisco i casi piu' frequenti nel pool MVP. I casi non
-    // riconosciuti vengono comunque loggati come "effetto narrativo" senza
-    // modifiche meccaniche, cosi il gioco non si blocca.
-    const desc = (carta.effetto_meccanico || '').toLowerCase();
     let testo = `${pg.nome} attiva "${carta.nome}".`;
 
-    if (desc.includes('scudo')) {
-        // Es. ABL_GUARDIA: "scudo intensita 3 per 1 turno".
-        pg.status.push({
-            tipo: 'scudo',
-            intensita: carta.valore_numerico || 3,
-            durata_residua: 1,
-            origine: carta.id,
-        });
-        testo += ` Ottiene scudo ${carta.valore_numerico || 3}.`;
+    const effetti = carta.effetto_strutturato;
+    if (!Array.isArray(effetti) || effetti.length === 0) {
+        // Carta senza struttura (legacy o di test): logga solo il testo narrativo.
+        s = _log_append(s, 'status_applicato', pg.id, null, { carta: carta.id }, testo);
+        return s;
     }
-    if (desc.includes('pesca') && desc.match(/pesca\s+(\d+)/)) {
-        const n = parseInt(desc.match(/pesca\s+(\d+)/)[1], 10);
-        s.giocatori[pg_idx] = pg;  // sincronizza prima di pesca
-        s = _pesca_carte(s, pg_idx, n);
-        testo += ` Pesca ${n} carte.`;
-    }
-    if (desc.match(/guadagna\s+(\d+)\s+en/)) {
-        const en = parseInt(desc.match(/guadagna\s+(\d+)\s+en/)[1], 10);
-        s.giocatori[pg_idx].energia += en;
-        testo += ` Guadagna ${en} EN.`;
-    }
-    if (desc.includes('cura') && carta.valore_numerico) {
-        // Cura applicata al PG stesso o al gruppo, a seconda del target.
-        if (carta.target === 'se') {
-            const cura = Math.min(pg.pv_max - pg.pv, carta.valore_numerico);
-            s.giocatori[pg_idx].pv += cura;
-            testo += ` Cura ${cura} PV.`;
-        } else if (carta.target === 'tutti') {
-            for (let i = 0; i < s.giocatori.length; i++) {
-                if (s.giocatori[i].ko) continue;
-                const cura = Math.min(s.giocatori[i].pv_max - s.giocatori[i].pv,
-                                       carta.valore_numerico);
-                s.giocatori[i].pv += cura;
+
+    // Set degli ID attacchi: serve per la condizione 'ultima_pesca_ha_attacco'.
+    const id_attacchi = db ? new Set(db.attacchi.map(a => a.id)) : new Set();
+    // Flag locale: aggiornato dall'op 'pesca', letto dalla condizione successiva.
+    let ultima_pesca_ha_attacco = false;
+
+    for (const e of effetti) {
+        // Valutazione condizione: salta l'op se non soddisfatta.
+        if (e.condizione === 'pv_sotto_meta') {
+            if (s.giocatori[pg_idx].pv >= s.giocatori[pg_idx].pv_max / 2) continue;
+        } else if (e.condizione === 'ultima_pesca_ha_attacco') {
+            if (!ultima_pesca_ha_attacco) continue;
+        }
+
+        if (e.op === 'applica_status') {
+            const status = { ...e.status, origine: carta.id };
+            if (e.target === 'se') {
+                s.giocatori[pg_idx].status.push(status);
+                testo += ` Ottiene ${e.status.tipo} (${e.status.intensita}).`;
+            } else if (e.target === 'tutti') {
+                for (let i = 0; i < s.giocatori.length; i++) {
+                    if (s.giocatori[i].ko) continue;
+                    s.giocatori[i].status.push({ ...status });
+                }
+                testo += ` Tutti i PG ottengono ${e.status.tipo}.`;
             }
-            testo += ` Cura tutti i PG di ${carta.valore_numerico} PV.`;
+        } else if (e.op === 'pesca') {
+            const mano_prima = s.giocatori[pg_idx].mano.slice();
+            s = _pesca_carte(s, pg_idx, e.n);
+            const nuove = s.giocatori[pg_idx].mano.filter(id => !mano_prima.includes(id));
+            ultima_pesca_ha_attacco = nuove.some(id => id_attacchi.has(id));
+            testo += ` Pesca ${e.n} carte.`;
+        } else if (e.op === 'guadagna_en') {
+            s.giocatori[pg_idx].energia += e.n;
+            testo += ` Guadagna ${e.n} EN.`;
         }
-    }
-    if (desc.includes('forza')) {
-        // Status forza al PG (intensita 1, durata da descrizione o 2 di default).
-        s.giocatori[pg_idx].status.push({
-            tipo: 'forza',
-            intensita: carta.valore_numerico || 1,
-            durata_residua: 2,
-            origine: carta.id,
-        });
-        testo += ` Ottiene status forza.`;
-    }
-    if (desc.includes('rigenerazione')) {
-        // ABL_BENEDIZIONE_GUARITORE: tutti i PG non KO.
-        for (let i = 0; i < s.giocatori.length; i++) {
-            if (s.giocatori[i].ko) continue;
-            s.giocatori[i].status.push({
-                tipo: 'rigenerazione',
-                intensita: carta.valore_numerico || 2,
-                durata_residua: 2,
-                origine: carta.id,
-            });
-        }
-        testo += ` Tutti i PG ottengono rigenerazione.`;
     }
 
     s = _log_append(s, 'status_applicato', pg.id, null, { carta: carta.id }, testo);
@@ -3119,8 +3129,9 @@ function _risolvi_oggetto(state, pg_idx, carta) {
 
 // =============================================================================
 // §5.7 v0.6 — pipeline_danno() : pipeline canonica del danno a 9 step.
+// [S3-fix: adapter _applica_danno() v0.5 rimosso; tutti i chiamanti usano questa.]
 //
-// Sostituisce la vecchia _applica_danno() di v0.4/v0.5. La nuova firma e':
+// Firma:
 //
 //   pipeline_danno(state, attaccante, fonte, target_id, db, opts?) -> state
 //
@@ -3376,18 +3387,11 @@ function _valuta_condizione_sigma2(pg, condizione, db) {
 //   soglia  : numero minimo di slot che devono matchare.
 //
 // Letture sul PG:
-//   pg.equipaggiamento[slot] puo' essere:
-//     - null/undefined  -> slot vuoto, non conta.
-//     - string (id)     -> oggi (16.5) e' l'id dell'oggetto base: risaliamo
-//                          ai tag da db.equipaggiamenti. In 16.7 diventera'
-//                          un'istanza con tag_correnti (forma_finale) ma
-//                          questa funzione restera' valida: il PARKING qui
-//                          sotto descrive la migrazione.
-//     - object          -> in futuro (16.7) sara' un'istanza con
-//                          { id, livello, tag_correnti, forma_finale_scelta }.
-//                          Anticipo gia' il supporto leggendo .tag_correnti
-//                          se presente, cosi' 16.7 non dovra' toccare questa
-//                          funzione (PARKING_LOT_ARMA_ISTANZA).
+//   pg.equipaggiamento[slot] e' sempre un id stringa (o null/undefined se vuoto).
+//   L'istanza per-PG (livello, tag_correnti) e' in pg.equip_istanze[slot] (16.7).
+//   _estrai_tag_oggetto astrae i due formati: oggi legge db.equipaggiamenti[id].tag;
+//   supporta anche il caso oggetto con tag_correnti per compatibilita' futura.
+//   [PARKING_LOT_ARMA_ISTANZA chiuso; S1-fix.]
 //
 // Nota: se un PG ha equipaggiamento=null o tutto vuoto, la funzione ritorna
 // false. E' la situazione del MVP attuale (vedi PARKING_LOT_EQUIP_INIZIALE_CLASSE
@@ -3419,20 +3423,21 @@ function _condizione_equip_tag_match(pg, condizione, db) {
 // -----------------------------------------------------------------------------
 // _estrai_tag_oggetto(e, db) -> array di tag
 //
-// Helper di transizione: oggi (16.5) un oggetto equipaggiato e' rappresentato
-// come id stringa. In 16.7 sara' un'istanza con tag_correnti. Questa funzione
-// astrae la differenza cosi' che _condizione_equip_tag_match resti stabile.
+// pg.equipaggiamento[slot] e' sempre un id stringa (o null). L'istanza per-PG
+// (16.7) vive in pg.equip_istanze[slot], non in pg.equipaggiamento[slot].
+// I casi "object" sotto sono difensivi: coprono test che iniettano direttamente
+// un oggetto al posto dello slot stringa. [S1-fix: linguaggio futuro rimosso.]
 // -----------------------------------------------------------------------------
 function _estrai_tag_oggetto(e, db) {
-    // Caso "istanza" (futuro 16.7): l'oggetto espone direttamente tag_correnti.
+    // Caso difensivo: oggetto con tag_correnti (es. test che iniettano istanze).
     if (e && typeof e === 'object' && Array.isArray(e.tag_correnti)) {
         return e.tag_correnti;
     }
-    // Caso "istanza con campo tag" (futuro alternativo).
+    // Caso difensivo: oggetto con campo tag.
     if (e && typeof e === 'object' && Array.isArray(e.tag)) {
         return e.tag;
     }
-    // Caso "id stringa" (oggi): risaliamo al db degli equipaggiamenti.
+    // Caso corrente: id stringa → risale al db degli equipaggiamenti.
     if (typeof e === 'string' && db && Array.isArray(db.equipaggiamenti)) {
         const def = db.equipaggiamenti.find(x => x.id === e);
         if (def && Array.isArray(def.tag)) return def.tag;
@@ -3830,11 +3835,12 @@ function pipeline_danno(state, attaccante, fonte, target_id, db, opts) {
                     }
                 }
             }
-            s = _log_append(s, 'ko', null, morto.istanza_id, { carta: morto.carta_id },
+            // §5.11: payload ko include categoria per trigger kill_categoria (M1-fix).
+            const _def_morto = _carta_nemico_da_id(morto.carta_id, db);
+            s = _log_append(s, 'ko', null, morto.istanza_id,
+                { carta: morto.carta_id, categoria: _def_morto ? _def_morto.categoria : null },
                 `${morto.istanza_id} (${morto.carta_id}) è sconfitto!`);
             s.nemici_in_campo.splice(nem_idx, 1);
-            // PARKING_LOT_RAMI_EVOLUTIVI : se target era boss, trigger
-            // possibili kill_categoria per RamoEvolutivo (§5.11). Si aggancia in 16.7.
         } else {
             // §4.4 — Trigger Alleato (Luna): salva il PG da KO lasciandolo a 1 PV.
             const { trigger_salvataggio_alleato } = GED;
@@ -3850,34 +3856,6 @@ function pipeline_danno(state, attaccante, fonte, target_id, db, opts) {
     }
 
     return s;
-}
-
-// =============================================================================
-// ADAPTER di compatibilita': _applica_danno() della v0.5 ora delega a
-// pipeline_danno(). I chiamanti interni (_risolvi_attacco, turno_nemici)
-// useranno direttamente pipeline_danno; l'adapter sopravvive solo come
-// salvagente nel caso qualcosa lo invochi ancora dall'esterno.
-//
-// La firma vecchia era: _applica_danno(state, target_id, danno_base, attaccante, opts).
-// In 16.8 (chiusura del debito tecnico DB_REF) e' stata estesa con `db`
-// per coerenza con la nuova signature di pipeline_danno.
-// Costruisco al volo una "fonte sintetica" con valore_numerico=danno_base e
-// tag=[] (=> step 4 non matcha mai => stesso comportamento v0.5 sui danni).
-//
-// PARKING_LOT_REMOVE_ADAPTER : rimuovere quando tutti i chiamanti saranno
-// migrati a pipeline_danno (in pratica fine di 16.x).
-// =============================================================================
-function _applica_danno(state, target_id, danno_base, attaccante, db, opts) {
-    const fonte_sintetica = {
-        id: null,
-        valore_numerico: danno_base,
-        tag: [],
-        salta_step_tag: false,
-        ignora_difesa: false,
-        ignora_scudo: false,
-        applica_status: null,
-    };
-    return pipeline_danno(state, attaccante, fonte_sintetica, target_id, db, opts);
 }
 
 // =============================================================================
@@ -4281,7 +4259,8 @@ function avvia_combattimento(state, db) {
 // di uscita combattimento / ingresso nodo riposo: cosi' il passo A puo'
 // essere verificato in isolamento.
 //
-// CHIUDE: PARKING_LOT_ARMA_ISTANZA (livello dell'equip ora vive su pg.equip_istanze).
+// CHIUDE: PARKING_LOT_ARMA_ISTANZA — struttura istanza creata qui (16.7) e
+// livello reale letto da _risolvi_arma_pg (M2-fix, 16.11).
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -4491,8 +4470,9 @@ function _trigger_forma_soddisfatto(state, pg, trigger) {
             return state.mondo && state.mondo.id === param;
 
         case 'nodo_tipo': {
+            // §5.11: il campo corretto e' tipo_nodo (non tipo, che non esiste); C2-fix.
             const nodo = state.mappa && state.mappa.nodi[state.mappa.nodo_corrente];
-            return nodo ? nodo.tipo === param : false;
+            return nodo ? nodo.tipo_nodo === param : false;
         }
 
         case 'png_amico': {
@@ -4781,6 +4761,13 @@ var GED_EXPORTS = {
 'use strict';
 
 const { rng, rng_int, mescola } = GED;
+// §S2-fix: dipendenza circolare esplorazione → combattimento. Node.js risolve i
+// require circolari via cache-modulo: al momento dell'esecuzione delle funzioni
+// entrambi i moduli sono gia' completamente caricati, quindi e' sicuro. Spostato
+// qui (invece che dentro ogni funzione) per rendere esplicita la dipendenza e
+// ridurre il rischio in ambienti non-standard (es. worker thread, bundler).
+const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
+    GED;
 
 // -----------------------------------------------------------------------------
 // Helper: clone, log, find. Stessa firma di combattimento.js.
@@ -4868,8 +4855,6 @@ function risolvi_nodo_riposo(state, db) {
     // salta direttamente alla rivalutazione trigger forme finali rimaste.
     // Vedi nota a fine funzione per dove si setta il flag.
     if (nodo.parte_riposo_applicata) {
-        const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
-            GED;
         for (let i = 0; i < s.giocatori.length; i++) {
             if (s.giocatori[i].ko) continue;
             // Auto-evoluzione: gli equip che hanno raggiunto il Lv3 nel passo
@@ -4944,9 +4929,6 @@ function risolvi_nodo_riposo(state, db) {
     // UI potra' chiamare valuta_trigger_forme_finali manualmente dopo ogni
     // conferma_forma_finale per concatenare bivi nello stesso riposo: lascio
     // questa scelta al passo UI per non far esplodere l'ambito di 16.7).
-    const { auto_evoluzione_equip, valuta_trigger_forme_finali, FASE } =
-        GED;
-
     // Fase 1: auto-evoluzione per tutti i PG vivi.
     for (let i = 0; i < s.giocatori.length; i++) {
         if (s.giocatori[i].ko) continue;
@@ -5003,8 +4985,8 @@ function risolvi_nodo_tesoro(state, db) {
     for (let i = 0; i < s.giocatori.length; i++) {
         const pg = s.giocatori[i];
         if (pg.ko) continue;
-        // Pool: universali + classe del PG.
-        const pool = db.oggetti.filter(
+        // Pool: universali + classe del PG (equipaggiamenti + consumabili; C1-fix).
+        const pool = db.equipaggiamenti.concat(db.consumabili).filter(
             o => o.classe_preferita === 'universale' || o.classe_preferita === pg.classe
         );
         if (pool.length === 0) continue;
@@ -5304,10 +5286,11 @@ function _applica_singola_modifica(state, modifica, db) {
             }
             for (const i of destinatari) {
                 const pg = s.giocatori[i];
-                // Cerca la definizione della carta per il nome narrativo.
+                // Cerca la definizione della carta per il nome narrativo (C1-fix).
                 const def = db.attacchi.find(c => c.id === carta_id)
                        || db.abilita.find(c => c.id === carta_id)
-                       || db.oggetti.find(c => c.id === carta_id);
+                       || db.equipaggiamenti.find(c => c.id === carta_id)
+                       || db.consumabili.find(c => c.id === carta_id);
                 pg.scarti.push(carta_id);
                 s = _log_append(s, 'ricompensa', null, pg.id,
                     { carta: carta_id, dove: 'scarti' },

@@ -548,9 +548,11 @@
   }
 
   function trova_carta(carta_id) {
+    // C1-fix: db.oggetti rimosso in 16.1, cerca in equipaggiamenti + consumabili.
     return db.attacchi.find(c => c.id === carta_id)
         || db.abilita.find(c => c.id === carta_id)
-        || db.oggetti.find(c => c.id === carta_id);
+        || db.equipaggiamenti.find(c => c.id === carta_id)
+        || db.consumabili.find(c => c.id === carta_id);
   }
 
   function seleziona_carta(carta_id, carta_def) {

@@ -259,7 +259,7 @@ function valuta_apparizione_png(state, db) {
 // Funzioni invocabili dal motore quando il trigger giusto si verifica.
 // =============================================================================
 
-// Trigger Alleato: chiamato da _applica_danno PRIMA di marcare KO un PG.
+// Trigger Alleato: chiamato da pipeline_danno PRIMA di marcare KO un PG.
 // Se Luna Alleata e' in gioco e non ha ancora usato il salvataggio, il PG
 // resta a 1 PV invece di andare a 0. One-shot per run.
 // Ritorna true se il salvataggio e' scattato (chi chiama mette PV a 1).
@@ -281,7 +281,8 @@ function trigger_commercio_mercante(state, db) {
     const merc = state.png_in_gioco.find(p => p.id === 'PNG_CORVO_MERCANTE' && p.commercio_disponibile);
     if (!merc) return state;
     merc.commercio_disponibile = false;  // una sola volta per apparizione
-    const pool = db.oggetti.filter(o => o.classe_preferita === 'universale');
+    // Pool universali del mercante (equipaggiamenti + consumabili; C1-fix).
+    const pool = db.equipaggiamenti.concat(db.consumabili).filter(o => o.classe_preferita === 'universale');
     if (pool.length === 0) return state;
     for (let i = 0; i < state.giocatori.length; i++) {
         const pg = state.giocatori[i];
